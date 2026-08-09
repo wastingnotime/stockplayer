@@ -170,6 +170,8 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(environment.projections.reservations, rebuilt.reservations)
         self.assertEqual(environment.projections.ledger, rebuilt.ledger)
         self.assertEqual(environment.projections.positions, rebuilt.positions)
+        self.assertEqual(environment.projections.position_cost_minor, rebuilt.position_cost_minor)
+        self.assertEqual(environment.projections.realized_result_minor, rebuilt.realized_result_minor)
 
     def test_market_sell_settles_proceeds_and_prevents_short_selling(self):
         environment = StockplayerEnvironment({"AUR": 2_500})
@@ -185,6 +187,20 @@ class AccountTests(unittest.TestCase):
         self.assertIsInstance(rejected[0], OrderRejected)
         self.assertEqual("insufficient owned quantity", rejected[0].reason)
         self.assertEqual(6, Account.rehydrate(environment.store.load("account-1")).positions["AUR"])
+
+    def test_position_cost_and_realized_result_use_deterministic_floor_rounding(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.buy(SubmitMarketBuy("account-1", "buy-1", "execution-buy-1", "AUR", 10, NOW))
+        environment.market.prices["AUR"] = 3_000
+        environment.buy(SubmitMarketBuy("account-1", "buy-2", "execution-buy-2", "AUR", 5, NOW))
+
+        self.assertEqual(15, environment.projections.positions[("account-1", "AUR")])
+        self.assertEqual(2_666, environment.projections.average_cost_minor("account-1", "AUR"))
+        environment.sell(SubmitMarketSell("account-1", "sell-1", "execution-sell", "AUR", 5, 3_000, NOW))
+        self.assertEqual(10, environment.projections.positions[("account-1", "AUR")])
+        self.assertEqual(2_666, environment.projections.average_cost_minor("account-1", "AUR"))
+        self.assertEqual(1_667, environment.projections.realized_result_minor[("account-1", "AUR")])
 
 
 if __name__ == "__main__":

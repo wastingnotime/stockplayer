@@ -42,9 +42,10 @@ event, and replaying an event stream reconstructs the same account state.
 6. Partial execution and remaining reservation (built).
 7. Duplicate execution defense and projection rebuild (built).
 8. Market sell and no-short-selling (built).
-9. Failure/recovery and projection lag.
-10. Execution-engine comparison.
-11. Released API and browser adapter contracts.
+9. Position cost basis and realized result (built).
+10. Failure/recovery and projection lag.
+11. Execution-engine comparison.
+12. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.

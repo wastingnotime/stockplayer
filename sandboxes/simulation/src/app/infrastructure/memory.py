@@ -48,6 +48,8 @@ class AccountProjections:
         self.reservations: dict[tuple[str, str], int] = {}
         self.ledger: dict[str, list[LedgerEntry]] = {}
         self.positions: dict[tuple[str, str], int] = {}
+        self.position_cost_minor: dict[tuple[str, str], int] = {}
+        self.realized_result_minor: dict[tuple[str, str], int] = {}
         self.processed_execution_ids: set[str] = set()
 
     def rebuild(self, events: list[DomainEvent]) -> None:
@@ -57,6 +59,8 @@ class AccountProjections:
         self.reservations.clear()
         self.ledger.clear()
         self.positions.clear()
+        self.position_cost_minor.clear()
+        self.realized_result_minor.clear()
         self.processed_execution_ids.clear()
         self.project(events)
 
@@ -76,17 +80,11 @@ class AccountProjections:
             elif isinstance(event, MarketBuyExecuted):
                 self.cash_minor[event.account_id] -= event.cost_minor
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", -event.cost_minor, event.execution_id))
-                key = (event.account_id, event.symbol)
-                self.positions[key] = self.positions.get(key, 0) + event.quantity
+                self._record_buy(event.account_id, event.symbol, event.quantity, event.cost_minor)
             elif isinstance(event, MarketSellExecuted):
                 self.cash_minor[event.account_id] += event.proceeds_minor
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", event.proceeds_minor, event.execution_id))
-                key = (event.account_id, event.symbol)
-                remaining = self.positions.get(key, 0) - event.quantity
-                if remaining:
-                    self.positions[key] = remaining
-                else:
-                    self.positions.pop(key, None)
+                self._record_sell(event.account_id, event.symbol, event.quantity, event.proceeds_minor)
             elif isinstance(event, LimitBuyReserved):
                 self.cash_minor[event.account_id] -= event.reserved_cash_minor
                 self.reserved_cash_minor[event.account_id] += event.reserved_cash_minor
@@ -99,13 +97,35 @@ class AccountProjections:
                 self.cash_minor[event.account_id] += event.released_cash_minor
                 self.reserved_cash_minor[event.account_id] -= event.reserved_cash_minor
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", -event.cost_minor, event.execution_id))
-                key = (event.account_id, event.symbol)
-                self.positions[key] = self.positions.get(key, 0) + event.quantity
+                self._record_buy(event.account_id, event.symbol, event.quantity, event.cost_minor)
                 del self.reservations[(event.account_id, event.order_id)]
             elif isinstance(event, LimitBuyPartiallyExecuted):
                 self.cash_minor[event.account_id] += event.released_cash_minor
                 self.reserved_cash_minor[event.account_id] -= event.reserved_cash_minor
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", -event.cost_minor, event.execution_id))
-                key = (event.account_id, event.symbol)
-                self.positions[key] = self.positions.get(key, 0) + event.quantity
+                self._record_buy(event.account_id, event.symbol, event.quantity, event.cost_minor)
                 self.reservations[(event.account_id, event.order_id)] = event.remaining_reserved_cash_minor
+
+    def average_cost_minor(self, account_id: str, symbol: str) -> int:
+        key = (account_id, symbol)
+        quantity = self.positions.get(key, 0)
+        return self.position_cost_minor.get(key, 0) // quantity if quantity else 0
+
+    def _record_buy(self, account_id: str, symbol: str, quantity: int, cost_minor: int) -> None:
+        key = (account_id, symbol)
+        self.positions[key] = self.positions.get(key, 0) + quantity
+        self.position_cost_minor[key] = self.position_cost_minor.get(key, 0) + cost_minor
+
+    def _record_sell(self, account_id: str, symbol: str, quantity: int, proceeds_minor: int) -> None:
+        key = (account_id, symbol)
+        quantity_before = self.positions[key]
+        cost_before = self.position_cost_minor[key]
+        cost_basis = (cost_before * quantity) // quantity_before
+        remaining = quantity_before - quantity
+        self.realized_result_minor[key] = self.realized_result_minor.get(key, 0) + proceeds_minor - cost_basis
+        if remaining:
+            self.positions[key] = remaining
+            self.position_cost_minor[key] = cost_before - cost_basis
+        else:
+            self.positions.pop(key, None)
+            self.position_cost_minor.pop(key, None)
