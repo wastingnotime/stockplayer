@@ -78,7 +78,8 @@ event, and replaying an event stream reconstructs the same account state.
 42. Draft API account valuation query (built; unreleased).
 43. Draft API market-session query (built; unreleased).
 44. Draft API market-price query (built; unreleased).
-45. Released API and browser adapter contracts.
+45. Draft API single market-price query (built; unreleased).
+46. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.

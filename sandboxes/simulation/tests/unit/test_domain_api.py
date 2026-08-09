@@ -18,6 +18,9 @@ class SimulationApiFacadeTests(unittest.TestCase):
     def test_draft_adapter_exposes_current_market_prices(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500, "BEX": 1_100}))
         self.assertEqual({"AUR": 2_500, "BEX": 1_100}, facade.market_prices())
+        self.assertEqual(2_500, facade.market_price("AUR"))
+        with self.assertRaisesRegex(ValueError, "no current price"):
+            facade.market_price("MISSING")
 
     def test_draft_adapter_rejects_naive_timestamps_at_boundary(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
