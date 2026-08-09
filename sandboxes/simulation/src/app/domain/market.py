@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+
+
+@dataclass(frozen=True)
+class PriceTick:
+    symbol: str
+    price_minor: int
+    sequence: int
+    occurred_at: datetime
+    source_seed: int
+
+    def __post_init__(self) -> None:
+        if not self.symbol:
+            raise ValueError("symbol is required")
+        if self.price_minor <= 0:
+            raise ValueError("price_minor must be positive")
+        if self.sequence <= 0:
+            raise ValueError("sequence must be positive")
+
+
+class PriceHistory:
+    """Append-only deterministic market facts and a rebuildable price view."""
+
+    def __init__(self) -> None:
+        self.events: list[PriceTick] = []
+        self.current: dict[str, int] = {}
+
+    def append(self, tick: PriceTick) -> None:
+        expected = len(self.events) + 1
+        if tick.sequence != expected:
+            raise ValueError(f"expected price sequence {expected}")
+        self.events.append(tick)
+        self.current[tick.symbol] = tick.price_minor
+
+    def rebuild(self, events: list[PriceTick]) -> None:
+        self.events.clear()
+        self.current.clear()
+        for tick in events:
+            self.append(tick)
+
+    def price_minor(self, symbol: str) -> int:
+        try:
+            return self.current[symbol]
+        except KeyError as error:
+            raise ValueError(f"no price tick for {symbol}") from error

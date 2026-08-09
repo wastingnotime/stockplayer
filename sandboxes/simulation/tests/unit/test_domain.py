@@ -8,6 +8,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell
 from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected
 from app.infrastructure.memory import AccountProjections
+from app.domain.market import PriceHistory, PriceTick
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -203,6 +204,19 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(2_666, environment.projections.average_cost_minor("account-1", "AUR"))
         self.assertEqual(1_667, environment.projections.realized_result_minor[("account-1", "AUR")])
         self.assertEqual(3_333, environment.projections.unrealized_result_minor("account-1", "AUR", 3_000))
+
+    def test_price_ticks_are_sequenced_and_rebuildable(self):
+        history = PriceHistory()
+        history.append(PriceTick("AUR", 2_500, 1, NOW, 42))
+        history.append(PriceTick("AUR", 2_700, 2, NOW, 42))
+        self.assertEqual(2_700, history.price_minor("AUR"))
+
+        rebuilt = PriceHistory()
+        rebuilt.rebuild(history.events)
+        self.assertEqual(history.current, rebuilt.current)
+        self.assertEqual(history.events, rebuilt.events)
+        with self.assertRaisesRegex(ValueError, "expected price sequence"):
+            history.append(PriceTick("AUR", 2_800, 4, NOW, 42))
 
 
 if __name__ == "__main__":
