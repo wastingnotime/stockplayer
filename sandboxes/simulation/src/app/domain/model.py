@@ -59,7 +59,15 @@ class LimitBuyReserved:
     occurred_at: datetime
 
 
-DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | OrderRejected | LimitBuyReserved
+@dataclass(frozen=True)
+class OrderCancelled:
+    account_id: str
+    order_id: str
+    released_cash_minor: int
+    occurred_at: datetime
+
+
+DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | OrderRejected | LimitBuyReserved | OrderCancelled
 
 
 class DomainError(Exception):
@@ -132,6 +140,14 @@ class Account:
             limit_price_minor, reserved, now,
         ))
 
+    def cancel_limit_buy(self, order_id: str, now: datetime) -> None:
+        self._require_open()
+        try:
+            reserved = self.reservations[order_id]
+        except KeyError as error:
+            raise DomainError("open limit-buy order not found") from error
+        self._record(OrderCancelled(self.account_id or "", order_id, reserved, now))
+
     def pull_events(self) -> list[DomainEvent]:
         events, self._pending = self._pending, []
         return events
@@ -156,4 +172,8 @@ class Account:
             self.available_cash_minor -= event.reserved_cash_minor
             self.reserved_cash_minor += event.reserved_cash_minor
             self.reservations[event.order_id] = event.reserved_cash_minor
+        elif isinstance(event, OrderCancelled):
+            self.available_cash_minor += event.released_cash_minor
+            self.reserved_cash_minor -= event.released_cash_minor
+            del self.reservations[event.order_id]
         self.version += 1

@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 
-from app.application.purchase import SubmitLimitBuy, SubmitMarketBuy
-from app.domain.model import Account, DomainError, LimitBuyReserved, OrderRejected
+from app.application.purchase import CancelLimitBuy, SubmitLimitBuy, SubmitMarketBuy
+from app.domain.model import Account, DomainError, LimitBuyReserved, OrderCancelled, OrderRejected
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -63,6 +63,31 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(60_000, environment.projections.cash_minor["account-1"])
         self.assertEqual(40_000, environment.projections.reserved_cash_minor["account-1"])
         self.assertEqual(40_000, Account.rehydrate(environment.store.load("account-1")).reserved_cash_minor)
+
+    def test_cancellation_releases_cash_and_replay_closes_reservation(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.limit_buy(SubmitLimitBuy("account-1", "limit-1", "AUR", 20, 2_000, NOW))
+
+        events = environment.cancel_limit_buy(CancelLimitBuy("account-1", "limit-1", NOW))
+        self.assertIsInstance(events[0], OrderCancelled)
+        self.assertEqual(100_000, environment.projections.cash_minor["account-1"])
+        self.assertEqual(0, environment.projections.reserved_cash_minor["account-1"])
+        replayed = Account.rehydrate(environment.store.load("account-1"))
+        self.assertEqual(100_000, replayed.available_cash_minor)
+        self.assertEqual(0, replayed.reserved_cash_minor)
+        self.assertEqual({}, replayed.reservations)
+
+    def test_cancelling_missing_order_does_not_append_a_fact(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        before = environment.store.load("account-1")
+
+        with self.assertRaisesRegex(DomainError, "not found"):
+            environment.cancel_limit_buy(CancelLimitBuy("account-1", "missing", NOW))
+
+        self.assertEqual(before, environment.store.load("account-1"))
+        self.assertEqual(100_000, environment.projections.cash_minor["account-1"])
 
 
 if __name__ == "__main__":

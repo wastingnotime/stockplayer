@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyReserved, MarketBuyExecuted
+from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyReserved, MarketBuyExecuted, OrderCancelled
 
 
 class ConcurrencyError(Exception):
@@ -67,3 +67,7 @@ class AccountProjections:
                 self.cash_minor[event.account_id] -= event.reserved_cash_minor
                 self.reserved_cash_minor[event.account_id] += event.reserved_cash_minor
                 self.reservations[(event.account_id, event.order_id)] = event.reserved_cash_minor
+            elif isinstance(event, OrderCancelled):
+                self.cash_minor[event.account_id] += event.released_cash_minor
+                self.reserved_cash_minor[event.account_id] -= event.released_cash_minor
+                del self.reservations[(event.account_id, event.order_id)]
