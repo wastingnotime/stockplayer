@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 
-from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell, SubmitMarketSellReservation
-from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected, SellQuantityReserved
+from app.application.purchase import CancelLimitBuy, CancelMarketSellReservation, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell, SubmitMarketSellReservation
+from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected, SellQuantityReserved, SellReservationCancelled
 from app.infrastructure.memory import AccountProjections, ProjectionFailure
 from app.simulation.invariants import cash_non_negative, ledger_explains_total_cash, positions_non_negative, reservations_non_negative
 from app.simulation.catalog import SCENARIOS, get_scenario, implemented_scenarios
@@ -183,6 +183,19 @@ class AccountTests(unittest.TestCase):
         account = Account.rehydrate(environment.store.load("account-1"))
         self.assertEqual(10, account.positions["AUR"])
         self.assertEqual(6, account.reserved_quantities["sell-res-1"])
+
+    def test_sell_reservation_cancellation_releases_quantity(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.buy(SubmitMarketBuy("account-1", "buy-1", "execution-buy", "AUR", 10, NOW))
+        environment.reserve_sell(SubmitMarketSellReservation("account-1", "sell-res-1", "AUR", 6, NOW))
+
+        events = environment.cancel_sell_reservation(CancelMarketSellReservation("account-1", "sell-res-1", NOW))
+        self.assertIsInstance(events[0], SellReservationCancelled)
+        account = Account.rehydrate(environment.store.load("account-1"))
+        self.assertEqual({}, account.reserved_quantities)
+        accepted = environment.reserve_sell(SubmitMarketSellReservation("account-1", "sell-res-2", "AUR", 10, NOW))
+        self.assertIsInstance(accepted[0], SellQuantityReserved)
 
     def test_projection_rebuild_matches_incremental_projection(self):
         environment = StockplayerEnvironment({"AUR": 1_800})

@@ -84,6 +84,14 @@ class SellQuantityReserved:
 
 
 @dataclass(frozen=True)
+class SellReservationCancelled:
+    account_id: str
+    order_id: str
+    released_quantity: int
+    occurred_at: datetime
+
+
+@dataclass(frozen=True)
 class OrderCancelled:
     account_id: str
     order_id: str
@@ -127,7 +135,7 @@ class LimitBuyPartiallyExecuted:
         return self.quantity * self.price_minor
 
 
-DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | MarketSellExecuted | OrderRejected | LimitBuyReserved | SellQuantityReserved | OrderCancelled | LimitBuyExecuted | LimitBuyPartiallyExecuted
+DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | MarketSellExecuted | OrderRejected | LimitBuyReserved | SellQuantityReserved | SellReservationCancelled | OrderCancelled | LimitBuyExecuted | LimitBuyPartiallyExecuted
 
 
 class DomainError(Exception):
@@ -238,6 +246,14 @@ class Account:
             raise DomainError("insufficient available owned quantity")
         self._record(SellQuantityReserved(self.account_id or "", order_id, symbol, quantity, now))
 
+    def cancel_market_sell_reservation(self, order_id: str, now: datetime) -> None:
+        self._require_open()
+        try:
+            quantity = self.reserved_quantities[order_id]
+        except KeyError as error:
+            raise DomainError("sell reservation not found") from error
+        self._record(SellReservationCancelled(self.account_id or "", order_id, quantity, now))
+
     def cancel_limit_buy(self, order_id: str, now: datetime) -> None:
         self._require_open()
         try:
@@ -331,6 +347,9 @@ class Account:
         elif isinstance(event, SellQuantityReserved):
             self.reserved_quantities[event.order_id] = event.quantity
             self.sell_reservation_details[event.order_id] = (event.symbol, event.quantity)
+        elif isinstance(event, SellReservationCancelled):
+            del self.reserved_quantities[event.order_id]
+            del self.sell_reservation_details[event.order_id]
         elif isinstance(event, OrderCancelled):
             self.available_cash_minor += event.released_cash_minor
             self.reserved_cash_minor -= event.released_cash_minor

@@ -168,6 +168,28 @@ class SubmitMarketSellReservationHandler:
 
 
 @dataclass(frozen=True)
+class CancelMarketSellReservation:
+    account_id: str
+    order_id: str
+    occurred_at: datetime
+
+
+class CancelMarketSellReservationHandler:
+    def __init__(self, store: EventStore, projections: ProjectionSink) -> None:
+        self.store = store
+        self.projections = projections
+
+    def handle(self, command: CancelMarketSellReservation) -> list[DomainEvent]:
+        history = self.store.load(command.account_id)
+        account = Account.rehydrate(history)
+        account.cancel_market_sell_reservation(command.order_id, command.occurred_at)
+        events = account.pull_events()
+        self.store.append(command.account_id, len(history), events)
+        self.projections.project(events)
+        return events
+
+
+@dataclass(frozen=True)
 class CancelLimitBuy:
     account_id: str
     order_id: str
