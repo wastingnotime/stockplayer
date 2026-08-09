@@ -8,7 +8,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell
 from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected
 from app.infrastructure.memory import AccountProjections
-from app.domain.market import PriceHistory, PriceTick
+from app.domain.market import DeterministicPriceGenerator, PriceHistory, PriceTick
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -217,6 +217,22 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(history.events, rebuilt.events)
         with self.assertRaisesRegex(ValueError, "expected price sequence"):
             history.append(PriceTick("AUR", 2_800, 4, NOW, 42))
+
+    def test_seeded_price_generation_is_reproducible(self):
+        def generate():
+            generator = DeterministicPriceGenerator(42)
+            price = 2_500
+            ticks = []
+            for sequence in range(1, 4):
+                tick = generator.next_tick("AUR", price, sequence, NOW)
+                ticks.append(tick)
+                price = tick.price_minor
+            return ticks
+
+        first_ticks = generate()
+        second_ticks = generate()
+        self.assertEqual(first_ticks, second_ticks)
+        self.assertTrue(all(t.source_seed == 42 and t.price_minor > 0 for t in first_ticks))
 
 
 if __name__ == "__main__":
