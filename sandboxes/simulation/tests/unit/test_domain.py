@@ -197,10 +197,12 @@ class AccountTests(unittest.TestCase):
 
         self.assertEqual(15, environment.projections.positions[("account-1", "AUR")])
         self.assertEqual(2_666, environment.projections.average_cost_minor("account-1", "AUR"))
+        self.assertEqual(5_000, environment.projections.unrealized_result_minor("account-1", "AUR", 3_000))
         environment.sell(SubmitMarketSell("account-1", "sell-1", "execution-sell", "AUR", 5, 3_000, NOW))
         self.assertEqual(10, environment.projections.positions[("account-1", "AUR")])
         self.assertEqual(2_666, environment.projections.average_cost_minor("account-1", "AUR"))
         self.assertEqual(1_667, environment.projections.realized_result_minor[("account-1", "AUR")])
+        self.assertEqual(3_333, environment.projections.unrealized_result_minor("account-1", "AUR", 3_000))
 
 
 if __name__ == "__main__":

@@ -43,9 +43,10 @@ event, and replaying an event stream reconstructs the same account state.
 7. Duplicate execution defense and projection rebuild (built).
 8. Market sell and no-short-selling (built).
 9. Position cost basis and realized result (built).
-10. Failure/recovery and projection lag.
-11. Execution-engine comparison.
-12. Released API and browser adapter contracts.
+10. Unrealized result valuation (built).
+11. Failure/recovery and projection lag.
+12. Execution-engine comparison.
+13. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.

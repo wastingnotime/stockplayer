@@ -111,6 +111,12 @@ class AccountProjections:
         quantity = self.positions.get(key, 0)
         return self.position_cost_minor.get(key, 0) // quantity if quantity else 0
 
+    def unrealized_result_minor(self, account_id: str, symbol: str, current_price_minor: int) -> int:
+        if current_price_minor <= 0:
+            raise ValueError("current_price_minor must be positive")
+        key = (account_id, symbol)
+        return self.positions.get(key, 0) * current_price_minor - self.position_cost_minor.get(key, 0)
+
     def _record_buy(self, account_id: str, symbol: str, quantity: int, cost_minor: int) -> None:
         key = (account_id, symbol)
         self.positions[key] = self.positions.get(key, 0) + quantity
