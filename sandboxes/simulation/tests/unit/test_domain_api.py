@@ -19,6 +19,17 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual(75_000, result["account"]["available_cash_minor"])
         self.assertEqual("filled", result["account"]["orders"]["order-api"]["status"])
 
+    def test_draft_adapter_translates_market_sell(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        now = "2026-01-05T13:00:00Z"
+        facade.open_account({"account_id": "acct-sell-api", "display_name": "Sell Demo", "cash_minor": 100_000, "occurred_at": now})
+        facade.submit_market_buy({"account_id": "acct-sell-api", "order_id": "buy-api", "execution_id": "buy-execution", "symbol": "AUR", "quantity": 10, "occurred_at": now})
+        result = facade.submit_market_sell({"account_id": "acct-sell-api", "order_id": "sell-api", "execution_id": "sell-execution", "symbol": "AUR", "quantity": 4, "price_minor": 3_000, "occurred_at": now})
+        self.assertEqual(["MarketSellExecuted"], result["event_types"])
+        self.assertEqual(87_000, result["account"]["available_cash_minor"])
+        self.assertEqual({"AUR": 6}, result["account"]["positions"])
+        self.assertEqual("filled", result["account"]["orders"]["sell-api"]["status"])
+
 
 if __name__ == "__main__":
     unittest.main()

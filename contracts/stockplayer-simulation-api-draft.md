@@ -11,6 +11,8 @@ invariants, persistence, event sequencing, or session policy.
 - `open_account`: `account_id`, `display_name`, `cash_minor`, `occurred_at`.
 - `submit_market_buy`: `account_id`, `order_id`, `execution_id`, `symbol`,
   `quantity`, `occurred_at`.
+- `submit_market_sell`: `account_id`, `order_id`, `execution_id`, `symbol`,
+  `quantity`, `price_minor`, `occurred_at`.
 - `account`: returns available/reserved cash, positions, and order views.
 
 Money and prices are integer minor units. Timestamps are ISO-8601 with an
