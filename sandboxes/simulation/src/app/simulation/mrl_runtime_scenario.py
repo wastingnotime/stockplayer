@@ -30,6 +30,8 @@ def create_simulation() -> Scenario:
         events = environment.buy(SubmitMarketBuy("acct-demo", "order-001", "execution-001", "AUR", 10, context.clock.now()))
         context.emit("command", "market_buy_submitted", source="DemoUser", actor="demo-user", correlation_id="order-001", payload={"symbol": "AUR", "quantity": 10})
         context.emit("domain_events", "market_buy_executed", source="Stockplayer", actor="demo-user", correlation_id="order-001", payload={"event_count": len(events), "cash_minor": environment.projections.cash_minor["acct-demo"], "position_quantity": environment.projections.positions[("acct-demo", "AUR")]})
+        order = environment.projections.orders[("acct-demo", "order-001")]
+        context.emit("projection", "order_status_updated", source="Stockplayer", actor="projection-worker", correlation_id="order-001", payload={"order_id": "order-001", "status": order.status, "remaining_quantity": order.remaining_quantity})
 
     def advance_market(context) -> None:
         tick = price_generator.next_tick("AUR", environment.market.price_minor("AUR"), 1, context.clock.now())
@@ -48,6 +50,8 @@ def create_simulation() -> Scenario:
             context.emit("failure", "projection_failed_after_append", source="Stockplayer", actor="projection-worker", correlation_id="recovery-001", payload={"stream_event_count": len(history)})
             environment.projections.rebuild(history)
             context.emit("recovery", "projection_rebuilt", source="Stockplayer", actor="projection-worker", correlation_id="recovery-001", payload={"cash_minor": environment.projections.cash_minor["acct-demo"], "position_quantity": environment.projections.positions[("acct-demo", "AUR")]})
+            order = environment.projections.orders[("acct-demo", "order-002")]
+            context.emit("projection", "order_status_recovered", source="Stockplayer", actor="projection-worker", correlation_id="recovery-001", payload={"order_id": "order-002", "status": order.status, "remaining_quantity": order.remaining_quantity})
 
     def compare_execution_engines(context) -> None:
         request = ExecutionRequest("candidate-order", "AUR", 10, environment.market.price_minor("AUR"), 4)
