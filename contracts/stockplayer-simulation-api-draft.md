@@ -6,6 +6,9 @@ The thin adapter translates structured payloads into the repository-owned
 simulation use cases and queries projections. It must not duplicate domain
 invariants, persistence, event sequencing, or session policy.
 
+Command retries preserve repository idempotency: a duplicate order command
+returns no new event types and leaves the projected account unchanged.
+
 ## Current operations
 
 - `open_account`: `account_id`, `display_name`, `cash_minor`, `occurred_at`.

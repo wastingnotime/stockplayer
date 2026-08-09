@@ -58,6 +58,17 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual(result["account"]["ledger"], facade.ledger("acct-api"))
         self.assertEqual([], facade.ledger("missing-account"))
 
+    def test_draft_adapter_preserves_duplicate_market_buy_idempotency(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        now = "2026-01-05T13:00:00Z"
+        facade.open_account({"account_id": "acct-idempotent-api", "display_name": "Idempotent", "cash_minor": 100_000, "occurred_at": now})
+        payload = {"account_id": "acct-idempotent-api", "order_id": "order-idempotent", "execution_id": "execution-idempotent", "symbol": "AUR", "quantity": 10, "occurred_at": now}
+        first = facade.submit_market_buy(payload)
+        replay = facade.submit_market_buy({**payload, "execution_id": "execution-replay"})
+        self.assertEqual(["MarketBuyExecuted"], first["event_types"])
+        self.assertEqual([], replay["event_types"])
+        self.assertEqual(first["account"], replay["account"])
+
     def test_draft_adapter_translates_market_sell(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
         now = "2026-01-05T13:00:00Z"
