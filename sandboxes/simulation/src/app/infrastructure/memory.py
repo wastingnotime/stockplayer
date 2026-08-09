@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketBuyExecuted, OrderCancelled
+from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketBuyExecuted, MarketSellExecuted, OrderCancelled
 
 
 class ConcurrencyError(Exception):
@@ -62,7 +62,7 @@ class AccountProjections:
 
     def project(self, events: list[DomainEvent]) -> None:
         for event in events:
-            if isinstance(event, (MarketBuyExecuted, LimitBuyExecuted, LimitBuyPartiallyExecuted)):
+            if isinstance(event, (MarketBuyExecuted, MarketSellExecuted, LimitBuyExecuted, LimitBuyPartiallyExecuted)):
                 if event.execution_id in self.processed_execution_ids:
                     continue
                 self.processed_execution_ids.add(event.execution_id)
@@ -78,6 +78,15 @@ class AccountProjections:
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", -event.cost_minor, event.execution_id))
                 key = (event.account_id, event.symbol)
                 self.positions[key] = self.positions.get(key, 0) + event.quantity
+            elif isinstance(event, MarketSellExecuted):
+                self.cash_minor[event.account_id] += event.proceeds_minor
+                self.ledger[event.account_id].append(LedgerEntry("trade_settlement", event.proceeds_minor, event.execution_id))
+                key = (event.account_id, event.symbol)
+                remaining = self.positions.get(key, 0) - event.quantity
+                if remaining:
+                    self.positions[key] = remaining
+                else:
+                    self.positions.pop(key, None)
             elif isinstance(event, LimitBuyReserved):
                 self.cash_minor[event.account_id] -= event.reserved_cash_minor
                 self.reserved_cash_minor[event.account_id] += event.reserved_cash_minor

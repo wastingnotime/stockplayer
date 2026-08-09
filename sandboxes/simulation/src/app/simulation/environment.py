@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.application.purchase import CancelLimitBuy, CancelLimitBuyHandler, ExecuteLimitBuy, ExecuteLimitBuyHandler, ExecutePartialLimitBuy, ExecutePartialLimitBuyHandler, SubmitLimitBuy, SubmitLimitBuyHandler, SubmitMarketBuy, SubmitMarketBuyHandler
+from app.application.purchase import CancelLimitBuy, CancelLimitBuyHandler, ExecuteLimitBuy, ExecuteLimitBuyHandler, ExecutePartialLimitBuy, ExecutePartialLimitBuyHandler, SubmitLimitBuy, SubmitLimitBuyHandler, SubmitMarketBuy, SubmitMarketBuyHandler, SubmitMarketSell, SubmitMarketSellHandler
 from app.domain.model import Account
 from app.infrastructure.memory import AccountProjections, FixedMarketData, InMemoryEventStore
 
@@ -23,6 +23,9 @@ class StockplayerEnvironment:
 
     def buy(self, command: SubmitMarketBuy):
         return SubmitMarketBuyHandler(self.store, self.market, self.projections).handle(command)
+
+    def sell(self, command: SubmitMarketSell):
+        return SubmitMarketSellHandler(self.store, self.projections).handle(command)
 
     def limit_buy(self, command: SubmitLimitBuy):
         return SubmitLimitBuyHandler(self.store, self.projections).handle(command)

@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 
-from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy
-from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, OrderCancelled, OrderRejected
+from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell
+from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected
 from app.infrastructure.memory import AccountProjections
 from app.simulation.environment import StockplayerEnvironment
 
@@ -170,6 +170,21 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(environment.projections.reservations, rebuilt.reservations)
         self.assertEqual(environment.projections.ledger, rebuilt.ledger)
         self.assertEqual(environment.projections.positions, rebuilt.positions)
+
+    def test_market_sell_settles_proceeds_and_prevents_short_selling(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.buy(SubmitMarketBuy("account-1", "buy-1", "execution-buy", "AUR", 10, NOW))
+
+        events = environment.sell(SubmitMarketSell("account-1", "sell-1", "execution-sell", "AUR", 4, 3_000, NOW))
+        self.assertIsInstance(events[0], MarketSellExecuted)
+        self.assertEqual(87_000, environment.projections.cash_minor["account-1"])
+        self.assertEqual(6, environment.projections.positions[("account-1", "AUR")])
+
+        rejected = environment.sell(SubmitMarketSell("account-1", "sell-2", "execution-sell-2", "AUR", 7, 3_000, NOW))
+        self.assertIsInstance(rejected[0], OrderRejected)
+        self.assertEqual("insufficient owned quantity", rejected[0].reason)
+        self.assertEqual(6, Account.rehydrate(environment.store.load("account-1")).positions["AUR"])
 
 
 if __name__ == "__main__":

@@ -40,6 +40,21 @@ class MarketBuyExecuted:
 
 
 @dataclass(frozen=True)
+class MarketSellExecuted:
+    account_id: str
+    order_id: str
+    execution_id: str
+    symbol: str
+    quantity: int
+    price_minor: int
+    occurred_at: datetime
+
+    @property
+    def proceeds_minor(self) -> int:
+        return self.quantity * self.price_minor
+
+
+@dataclass(frozen=True)
 class OrderRejected:
     account_id: str
     order_id: str
@@ -103,7 +118,7 @@ class LimitBuyPartiallyExecuted:
         return self.quantity * self.price_minor
 
 
-DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | OrderRejected | LimitBuyReserved | OrderCancelled | LimitBuyExecuted | LimitBuyPartiallyExecuted
+DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | MarketSellExecuted | OrderRejected | LimitBuyReserved | OrderCancelled | LimitBuyExecuted | LimitBuyPartiallyExecuted
 
 
 class DomainError(Exception):
@@ -156,6 +171,22 @@ class Account:
         if cost > self.available_cash_minor:
             raise DomainError("insufficient available cash")
         self._record(MarketBuyExecuted(
+            self.account_id or "", order_id, execution_id, symbol,
+            quantity, price_minor, now,
+        ))
+
+    def execute_market_sell(
+        self, order_id: str, execution_id: str, symbol: str,
+        quantity: int, price_minor: int, now: datetime,
+    ) -> None:
+        self._require_open()
+        self._ensure_new_execution(execution_id)
+        quantity = positive(quantity, "quantity")
+        price_minor = positive(price_minor, "price_minor")
+        owned = self.positions.get(symbol, 0)
+        if quantity > owned:
+            raise DomainError("insufficient owned quantity")
+        self._record(MarketSellExecuted(
             self.account_id or "", order_id, execution_id, symbol,
             quantity, price_minor, now,
         ))
@@ -260,6 +291,14 @@ class Account:
             self.execution_ids.add(event.execution_id)
             self.available_cash_minor -= event.cost_minor
             self.positions[event.symbol] = self.positions.get(event.symbol, 0) + event.quantity
+        elif isinstance(event, MarketSellExecuted):
+            self.execution_ids.add(event.execution_id)
+            self.available_cash_minor += event.proceeds_minor
+            remaining = self.positions.get(event.symbol, 0) - event.quantity
+            if remaining:
+                self.positions[event.symbol] = remaining
+            else:
+                self.positions.pop(event.symbol, None)
         elif isinstance(event, LimitBuyReserved):
             self.available_cash_minor -= event.reserved_cash_minor
             self.reserved_cash_minor += event.reserved_cash_minor
