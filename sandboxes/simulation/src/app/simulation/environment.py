@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from app.domain.market import MarketSession
-from app.application.purchase import CancelLimitBuy, CancelLimitBuyHandler, CancelMarketSellReservation, CancelMarketSellReservationHandler, ExecuteLimitBuy, ExecuteLimitBuyHandler, ExecutePartialLimitBuy, ExecutePartialLimitBuyHandler, SubmitLimitBuy, SubmitLimitBuyHandler, SubmitMarketBuy, SubmitMarketBuyHandler, SubmitMarketSell, SubmitMarketSellHandler, SubmitMarketSellReservation, SubmitMarketSellReservationHandler
+from app.application.purchase import CancelLimitBuy, CancelLimitBuyHandler, CancelMarketSellReservation, CancelMarketSellReservationHandler, ExecuteLimitBuy, ExecuteLimitBuyHandler, ExecuteMarketSellReservation, ExecuteMarketSellReservationHandler, ExecutePartialLimitBuy, ExecutePartialLimitBuyHandler, SubmitLimitBuy, SubmitLimitBuyHandler, SubmitMarketBuy, SubmitMarketBuyHandler, SubmitMarketSell, SubmitMarketSellHandler, SubmitMarketSellReservation, SubmitMarketSellReservationHandler
 from app.domain.model import Account
 from app.infrastructure.memory import AccountProjections, FixedMarketData, InMemoryEventStore
 
@@ -39,6 +39,9 @@ class StockplayerEnvironment:
 
     def cancel_sell_reservation(self, command: CancelMarketSellReservation):
         return CancelMarketSellReservationHandler(self.store, self.projections).handle(command)
+
+    def execute_sell_reservation(self, command: ExecuteMarketSellReservation):
+        return ExecuteMarketSellReservationHandler(self.store, self.projections, self.session).handle(command)
 
     def limit_buy(self, command: SubmitLimitBuy):
         return SubmitLimitBuyHandler(self.store, self.projections, self.session).handle(command)

@@ -92,6 +92,21 @@ class SellReservationCancelled:
 
 
 @dataclass(frozen=True)
+class SellReservationExecuted:
+    account_id: str
+    order_id: str
+    execution_id: str
+    symbol: str
+    quantity: int
+    price_minor: int
+    occurred_at: datetime
+
+    @property
+    def proceeds_minor(self) -> int:
+        return self.quantity * self.price_minor
+
+
+@dataclass(frozen=True)
 class OrderCancelled:
     account_id: str
     order_id: str
@@ -135,7 +150,7 @@ class LimitBuyPartiallyExecuted:
         return self.quantity * self.price_minor
 
 
-DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | MarketSellExecuted | OrderRejected | LimitBuyReserved | SellQuantityReserved | SellReservationCancelled | OrderCancelled | LimitBuyExecuted | LimitBuyPartiallyExecuted
+DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | MarketSellExecuted | SellReservationExecuted | OrderRejected | LimitBuyReserved | SellQuantityReserved | SellReservationCancelled | OrderCancelled | LimitBuyExecuted | LimitBuyPartiallyExecuted
 
 
 class DomainError(Exception):
@@ -202,12 +217,25 @@ class Account:
         self._ensure_new_execution(execution_id)
         quantity = positive(quantity, "quantity")
         price_minor = positive(price_minor, "price_minor")
-        owned = self.positions.get(symbol, 0)
+        owned = self.positions.get(symbol, 0) - self._reserved_sell_quantity(symbol)
         if quantity > owned:
             raise DomainError("insufficient owned quantity")
         self._record(MarketSellExecuted(
             self.account_id or "", order_id, execution_id, symbol,
             quantity, price_minor, now,
+        ))
+
+    def execute_reserved_market_sell(self, order_id: str, execution_id: str, price_minor: int, now: datetime) -> None:
+        self._require_open()
+        self._ensure_new_execution(execution_id)
+        price_minor = positive(price_minor, "price_minor")
+        try:
+            symbol, quantity = self.sell_reservation_details[order_id]
+        except KeyError as error:
+            raise DomainError("sell reservation not found") from error
+        self._record(SellReservationExecuted(
+            self.account_id or "", order_id, execution_id, symbol, quantity,
+            price_minor, now,
         ))
 
     def reject_order(self, order_id: str, symbol: str, reason: str, now: datetime) -> None:
@@ -318,6 +346,9 @@ class Account:
         if execution_id in self.execution_ids:
             raise DuplicateExecution(f"execution {execution_id} already applied")
 
+    def _reserved_sell_quantity(self, symbol: str) -> int:
+        return sum(quantity for reserved_symbol, quantity in self.sell_reservation_details.values() if reserved_symbol == symbol)
+
     def _record(self, event: DomainEvent) -> None:
         self._apply(event)
         self._pending.append(event)
@@ -339,6 +370,16 @@ class Account:
                 self.positions[event.symbol] = remaining
             else:
                 self.positions.pop(event.symbol, None)
+        elif isinstance(event, SellReservationExecuted):
+            self.execution_ids.add(event.execution_id)
+            self.available_cash_minor += event.proceeds_minor
+            remaining = self.positions.get(event.symbol, 0) - event.quantity
+            if remaining:
+                self.positions[event.symbol] = remaining
+            else:
+                self.positions.pop(event.symbol, None)
+            del self.reserved_quantities[event.order_id]
+            del self.sell_reservation_details[event.order_id]
         elif isinstance(event, LimitBuyReserved):
             self.available_cash_minor -= event.reserved_cash_minor
             self.reserved_cash_minor += event.reserved_cash_minor
