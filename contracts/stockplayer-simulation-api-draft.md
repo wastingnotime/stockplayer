@@ -32,6 +32,8 @@ invariants, persistence, event sequencing, or session policy.
   basis, realized result, and unrealized result in integer minor units.
 - `order`: returns one projected order view, or `null` when the account has no
   order with that identifier.
+- `market_session`: returns the current session state (`scheduled`, `open`,
+  `paused`, or `closed`).
 
 Money and prices are integer minor units. Timestamps are ISO-8601 with an
 explicit offset; the draft adapter rejects naive timestamps at its boundary.

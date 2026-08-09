@@ -9,6 +9,12 @@ from app.simulation.environment import StockplayerEnvironment
 
 
 class SimulationApiFacadeTests(unittest.TestCase):
+    def test_draft_adapter_exposes_market_session_state(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        self.assertEqual({"state": "scheduled"}, facade.market_session())
+        facade.open_account({"account_id": "acct-session-api", "display_name": "Session Demo", "cash_minor": 100_000, "occurred_at": "2026-01-05T13:00:00Z"})
+        self.assertEqual({"state": "open"}, facade.market_session())
+
     def test_draft_adapter_rejects_naive_timestamps_at_boundary(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
         with self.assertRaisesRegex(ValueError, "explicit UTC offset"):
