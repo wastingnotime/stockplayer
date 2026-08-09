@@ -111,6 +111,7 @@ class SimulationApiFacade:
         projection = self.environment.projections
         positions = {symbol: quantity for (owner, symbol), quantity in projection.positions.items() if owner == account_id}
         orders = {order_id: asdict(view) for (owner, order_id), view in projection.orders.items() if owner == account_id}
+        ledger = [asdict(entry) for entry in projection.ledger.get(account_id, [])]
         reserved_quantities = {order_id: quantity for (owner, order_id), quantity in projection.reserved_quantities.items() if owner == account_id}
         valuation = {}
         for (owner, symbol), quantity in projection.positions.items():
@@ -130,6 +131,7 @@ class SimulationApiFacade:
             "positions": positions,
             "reserved_quantities": reserved_quantities,
             "valuation": valuation,
+            "ledger": ledger,
             "orders": orders,
         }
 

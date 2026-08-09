@@ -35,6 +35,11 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual(100_000, account["available_cash_minor"])
         self.assertEqual(["MarketBuyExecuted"], result["event_types"])
         self.assertEqual(75_000, result["account"]["available_cash_minor"])
+        self.assertEqual(
+            [{"entry_type": "initial_deposit", "amount_minor": 100_000, "reference": "deposit"},
+             {"entry_type": "trade_settlement", "amount_minor": -25_000, "reference": "execution-api"}],
+            result["account"]["ledger"],
+        )
         self.assertEqual("filled", result["account"]["orders"]["order-api"]["status"])
         self.assertEqual(
             {"account_id": "acct-api", "order_id": "order-api", "side": "buy", "symbol": "AUR",
