@@ -75,6 +75,15 @@ class LimitBuyReserved:
 
 
 @dataclass(frozen=True)
+class SellQuantityReserved:
+    account_id: str
+    order_id: str
+    symbol: str
+    quantity: int
+    occurred_at: datetime
+
+
+@dataclass(frozen=True)
 class OrderCancelled:
     account_id: str
     order_id: str
@@ -118,7 +127,7 @@ class LimitBuyPartiallyExecuted:
         return self.quantity * self.price_minor
 
 
-DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | MarketSellExecuted | OrderRejected | LimitBuyReserved | OrderCancelled | LimitBuyExecuted | LimitBuyPartiallyExecuted
+DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | MarketSellExecuted | OrderRejected | LimitBuyReserved | SellQuantityReserved | OrderCancelled | LimitBuyExecuted | LimitBuyPartiallyExecuted
 
 
 class DomainError(Exception):
@@ -136,6 +145,8 @@ class Account:
         self.reserved_cash_minor = 0
         self.reservations: dict[str, int] = {}
         self.reservation_details: dict[str, tuple[str, int, int]] = {}
+        self.reserved_quantities: dict[str, int] = {}
+        self.sell_reservation_details: dict[str, tuple[str, int]] = {}
         self.execution_ids: set[str] = set()
         self.positions: dict[str, int] = {}
         self.version = 0
@@ -213,6 +224,19 @@ class Account:
             self.account_id or "", order_id, symbol, quantity,
             limit_price_minor, reserved, now,
         ))
+
+    def reserve_market_sell(self, order_id: str, symbol: str, quantity: int, now: datetime) -> None:
+        self._require_open()
+        quantity = positive(quantity, "quantity")
+        if order_id in self.reserved_quantities:
+            raise DomainError("order already exists")
+        available = self.positions.get(symbol, 0) - sum(
+            reserved for reserved_order, (reserved_symbol, reserved) in self.sell_reservation_details.items()
+            if reserved_symbol == symbol and reserved_order != order_id
+        )
+        if quantity > available:
+            raise DomainError("insufficient available owned quantity")
+        self._record(SellQuantityReserved(self.account_id or "", order_id, symbol, quantity, now))
 
     def cancel_limit_buy(self, order_id: str, now: datetime) -> None:
         self._require_open()
@@ -304,6 +328,9 @@ class Account:
             self.reserved_cash_minor += event.reserved_cash_minor
             self.reservations[event.order_id] = event.reserved_cash_minor
             self.reservation_details[event.order_id] = (event.symbol, event.quantity, event.limit_price_minor)
+        elif isinstance(event, SellQuantityReserved):
+            self.reserved_quantities[event.order_id] = event.quantity
+            self.sell_reservation_details[event.order_id] = (event.symbol, event.quantity)
         elif isinstance(event, OrderCancelled):
             self.available_cash_minor += event.released_cash_minor
             self.reserved_cash_minor -= event.released_cash_minor

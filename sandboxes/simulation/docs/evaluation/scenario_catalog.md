@@ -9,6 +9,6 @@ reservation and cancellation, partial and duplicate execution, projection
 rebuild and failure recovery, market sell ownership, seeded price ticks,
 session enforcement, and engine comparison.
 
-Planned entries are sell-side quantity reservation and the released API
-adapter. They remain explicit so contributors can choose the next slice without
-confusing planned behavior with validated behavior.
+The released API adapter remains planned. It is explicit so contributors can
+choose the next slice without confusing planned behavior with validated
+behavior.

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketBuyExecuted, MarketSellExecuted, OrderCancelled
+from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketBuyExecuted, MarketSellExecuted, OrderCancelled, SellQuantityReserved
 
 
 class ConcurrencyError(Exception):
@@ -50,6 +50,7 @@ class AccountProjections:
         self.cash_minor: dict[str, int] = {}
         self.reserved_cash_minor: dict[str, int] = {}
         self.reservations: dict[tuple[str, str], int] = {}
+        self.reserved_quantities: dict[tuple[str, str], int] = {}
         self.ledger: dict[str, list[LedgerEntry]] = {}
         self.positions: dict[tuple[str, str], int] = {}
         self.position_cost_minor: dict[tuple[str, str], int] = {}
@@ -65,6 +66,7 @@ class AccountProjections:
         self.cash_minor.clear()
         self.reserved_cash_minor.clear()
         self.reservations.clear()
+        self.reserved_quantities.clear()
         self.ledger.clear()
         self.positions.clear()
         self.position_cost_minor.clear()
@@ -100,6 +102,8 @@ class AccountProjections:
                 self.cash_minor[event.account_id] -= event.reserved_cash_minor
                 self.reserved_cash_minor[event.account_id] += event.reserved_cash_minor
                 self.reservations[(event.account_id, event.order_id)] = event.reserved_cash_minor
+            elif isinstance(event, SellQuantityReserved):
+                self.reserved_quantities[(event.account_id, event.order_id)] = event.quantity
             elif isinstance(event, OrderCancelled):
                 self.cash_minor[event.account_id] += event.released_cash_minor
                 self.reserved_cash_minor[event.account_id] -= event.released_cash_minor

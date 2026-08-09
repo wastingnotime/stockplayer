@@ -24,7 +24,7 @@ SCENARIOS: tuple[ScenarioSpec, ...] = (
     ScenarioSpec("session_enforcement", "Session enforcement", "availability state at order boundary", "implemented"),
     ScenarioSpec("projection_failure_recovery", "Projection failure and recovery", "event-before-projection recovery", "implemented"),
     ScenarioSpec("engine_comparison", "Engine comparison", "versioned deterministic strategy differences", "implemented"),
-    ScenarioSpec("sell_reservation", "Sell reservation", "reserved owned quantity", "planned"),
+    ScenarioSpec("sell_reservation", "Sell reservation", "reserved owned quantity", "implemented"),
     ScenarioSpec("api_adapter", "API adapter", "technology-facing released contract", "planned"),
 )
 
