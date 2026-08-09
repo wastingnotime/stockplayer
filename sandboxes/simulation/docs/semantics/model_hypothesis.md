@@ -63,7 +63,8 @@ event, and replaying an event stream reconstructs the same account state.
 27. Order-status projection (built).
 28. Runtime order timeline (built).
 29. Order-command idempotency (built).
-30. Released API and browser adapter contracts.
+30. Draft API adapter (built; unreleased).
+31. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.
