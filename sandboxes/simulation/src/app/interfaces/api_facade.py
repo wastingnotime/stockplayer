@@ -8,7 +8,10 @@ from app.simulation.environment import StockplayerEnvironment
 
 
 def _time(value: str) -> datetime:
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("occurred_at must include an explicit UTC offset")
+    return parsed
 
 
 class SimulationApiFacade:

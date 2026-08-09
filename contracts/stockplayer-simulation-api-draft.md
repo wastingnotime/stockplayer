@@ -18,8 +18,9 @@ invariants, persistence, event sequencing, or session policy.
   order with that identifier.
 
 Money and prices are integer minor units. Timestamps are ISO-8601 with an
-explicit offset. Domain rejection remains represented by domain events and
-adapter errors until a released transport contract is selected.
+explicit offset; the draft adapter rejects naive timestamps at its boundary.
+Domain rejection remains represented by domain events and adapter errors until
+a released transport contract is selected.
 
 The executable draft is
 `sandboxes/simulation/src/app/interfaces/api_facade.py`.
