@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketBuyExecuted, MarketSellExecuted, OrderCancelled, SellQuantityReserved, SellReservationCancelled, SellReservationExecuted
+from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketBuyExecuted, MarketSellExecuted, OrderCancelled, SellQuantityReserved, SellReservationCancelled, SellReservationExecuted, SellReservationPartiallyExecuted
 
 
 class ConcurrencyError(Exception):
@@ -79,7 +79,7 @@ class AccountProjections:
             self._fail_next = False
             raise ProjectionFailure("injected projection failure")
         for event in events:
-            if isinstance(event, (MarketBuyExecuted, MarketSellExecuted, SellReservationExecuted, LimitBuyExecuted, LimitBuyPartiallyExecuted)):
+            if isinstance(event, (MarketBuyExecuted, MarketSellExecuted, SellReservationExecuted, SellReservationPartiallyExecuted, LimitBuyExecuted, LimitBuyPartiallyExecuted)):
                 if event.execution_id in self.processed_execution_ids:
                     continue
                 self.processed_execution_ids.add(event.execution_id)
@@ -103,6 +103,11 @@ class AccountProjections:
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", event.proceeds_minor, event.execution_id))
                 self._record_sell(event.account_id, event.symbol, event.quantity, event.proceeds_minor)
                 del self.reserved_quantities[(event.account_id, event.order_id)]
+            elif isinstance(event, SellReservationPartiallyExecuted):
+                self.cash_minor[event.account_id] += event.proceeds_minor
+                self.ledger[event.account_id].append(LedgerEntry("trade_settlement", event.proceeds_minor, event.execution_id))
+                self._record_sell(event.account_id, event.symbol, event.quantity, event.proceeds_minor)
+                self.reserved_quantities[(event.account_id, event.order_id)] = event.remaining_quantity
             elif isinstance(event, LimitBuyReserved):
                 self.cash_minor[event.account_id] -= event.reserved_cash_minor
                 self.reserved_cash_minor[event.account_id] += event.reserved_cash_minor

@@ -59,7 +59,8 @@ event, and replaying an event stream reconstructs the same account state.
 23. Sell-side quantity reservation (built).
 24. Sell-reservation cancellation (built).
 25. Sell-reservation execution (built).
-26. Released API and browser adapter contracts.
+26. Partial sell-reservation execution (built).
+27. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.

@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 
-from app.application.purchase import CancelLimitBuy, CancelMarketSellReservation, ExecuteLimitBuy, ExecuteMarketSellReservation, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell, SubmitMarketSellReservation
-from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected, SellQuantityReserved, SellReservationCancelled, SellReservationExecuted
+from app.application.purchase import CancelLimitBuy, CancelMarketSellReservation, ExecuteLimitBuy, ExecuteMarketSellReservation, ExecutePartialLimitBuy, ExecutePartialMarketSellReservation, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell, SubmitMarketSellReservation
+from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected, SellQuantityReserved, SellReservationCancelled, SellReservationExecuted, SellReservationPartiallyExecuted
 from app.infrastructure.memory import AccountProjections, ProjectionFailure
 from app.simulation.invariants import cash_non_negative, ledger_explains_total_cash, positions_non_negative, reservations_non_negative
 from app.simulation.catalog import SCENARIOS, get_scenario, implemented_scenarios
@@ -210,6 +210,19 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(93_000, environment.projections.cash_minor["account-1"])
         self.assertEqual(4, environment.projections.positions[("account-1", "AUR")])
         self.assertEqual({}, Account.rehydrate(environment.store.load("account-1")).reserved_quantities)
+
+    def test_partial_sell_reservation_execution_preserves_remaining_hold(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.buy(SubmitMarketBuy("account-1", "buy-1", "execution-buy", "AUR", 10, NOW))
+        environment.reserve_sell(SubmitMarketSellReservation("account-1", "sell-res-1", "AUR", 6, NOW))
+
+        events = environment.execute_partial_sell_reservation(ExecutePartialMarketSellReservation("account-1", "sell-res-1", "execution-partial", 2, 3_000, NOW))
+        self.assertIsInstance(events[0], SellReservationPartiallyExecuted)
+        account = Account.rehydrate(environment.store.load("account-1"))
+        self.assertEqual(8, account.positions["AUR"])
+        self.assertEqual(4, account.reserved_quantities["sell-res-1"])
+        self.assertEqual(81_000, environment.projections.cash_minor["account-1"])
 
     def test_projection_rebuild_matches_incremental_projection(self):
         environment = StockplayerEnvironment({"AUR": 1_800})

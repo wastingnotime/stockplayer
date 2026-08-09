@@ -219,6 +219,36 @@ class ExecuteMarketSellReservationHandler:
 
 
 @dataclass(frozen=True)
+class ExecutePartialMarketSellReservation:
+    account_id: str
+    order_id: str
+    execution_id: str
+    quantity: int
+    price_minor: int
+    occurred_at: datetime
+
+
+class ExecutePartialMarketSellReservationHandler:
+    def __init__(self, store: EventStore, projections: ProjectionSink, session: SessionGate | None = None) -> None:
+        self.store = store
+        self.projections = projections
+        self.session = session
+
+    def handle(self, command: ExecutePartialMarketSellReservation) -> list[DomainEvent]:
+        history = self.store.load(command.account_id)
+        account = Account.rehydrate(history)
+        require_open_session(self.session)
+        try:
+            account.execute_reserved_market_sell_partially(command.order_id, command.execution_id, command.quantity, command.price_minor, command.occurred_at)
+        except DuplicateExecution:
+            return []
+        events = account.pull_events()
+        self.store.append(command.account_id, len(history), events)
+        self.projections.project(events)
+        return events
+
+
+@dataclass(frozen=True)
 class CancelLimitBuy:
     account_id: str
     order_id: str

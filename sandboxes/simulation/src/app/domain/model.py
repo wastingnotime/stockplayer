@@ -107,6 +107,22 @@ class SellReservationExecuted:
 
 
 @dataclass(frozen=True)
+class SellReservationPartiallyExecuted:
+    account_id: str
+    order_id: str
+    execution_id: str
+    symbol: str
+    quantity: int
+    price_minor: int
+    remaining_quantity: int
+    occurred_at: datetime
+
+    @property
+    def proceeds_minor(self) -> int:
+        return self.quantity * self.price_minor
+
+
+@dataclass(frozen=True)
 class OrderCancelled:
     account_id: str
     order_id: str
@@ -150,7 +166,7 @@ class LimitBuyPartiallyExecuted:
         return self.quantity * self.price_minor
 
 
-DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | MarketSellExecuted | SellReservationExecuted | OrderRejected | LimitBuyReserved | SellQuantityReserved | SellReservationCancelled | OrderCancelled | LimitBuyExecuted | LimitBuyPartiallyExecuted
+DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | MarketSellExecuted | SellReservationExecuted | SellReservationPartiallyExecuted | OrderRejected | LimitBuyReserved | SellQuantityReserved | SellReservationCancelled | OrderCancelled | LimitBuyExecuted | LimitBuyPartiallyExecuted
 
 
 class DomainError(Exception):
@@ -236,6 +252,22 @@ class Account:
         self._record(SellReservationExecuted(
             self.account_id or "", order_id, execution_id, symbol, quantity,
             price_minor, now,
+        ))
+
+    def execute_reserved_market_sell_partially(self, order_id: str, execution_id: str, quantity: int, price_minor: int, now: datetime) -> None:
+        self._require_open()
+        self._ensure_new_execution(execution_id)
+        quantity = positive(quantity, "quantity")
+        price_minor = positive(price_minor, "price_minor")
+        try:
+            symbol, remaining = self.sell_reservation_details[order_id]
+        except KeyError as error:
+            raise DomainError("sell reservation not found") from error
+        if quantity >= remaining:
+            raise DomainError("partial quantity must be less than remaining quantity")
+        self._record(SellReservationPartiallyExecuted(
+            self.account_id or "", order_id, execution_id, symbol, quantity,
+            price_minor, remaining - quantity, now,
         ))
 
     def reject_order(self, order_id: str, symbol: str, reason: str, now: datetime) -> None:
@@ -380,6 +412,16 @@ class Account:
                 self.positions.pop(event.symbol, None)
             del self.reserved_quantities[event.order_id]
             del self.sell_reservation_details[event.order_id]
+        elif isinstance(event, SellReservationPartiallyExecuted):
+            self.execution_ids.add(event.execution_id)
+            self.available_cash_minor += event.proceeds_minor
+            remaining_position = self.positions.get(event.symbol, 0) - event.quantity
+            if remaining_position:
+                self.positions[event.symbol] = remaining_position
+            else:
+                self.positions.pop(event.symbol, None)
+            self.reserved_quantities[event.order_id] = event.remaining_quantity
+            self.sell_reservation_details[event.order_id] = (event.symbol, event.remaining_quantity)
         elif isinstance(event, LimitBuyReserved):
             self.available_cash_minor -= event.reserved_cash_minor
             self.reserved_cash_minor += event.reserved_cash_minor
