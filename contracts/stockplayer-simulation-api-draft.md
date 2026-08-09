@@ -16,6 +16,8 @@ invariants, persistence, event sequencing, or session policy.
 - `submit_limit_buy`: `account_id`, `order_id`, `symbol`, `quantity`,
   `limit_price_minor`, `occurred_at`.
 - `cancel_limit_buy`: `account_id`, `order_id`, `occurred_at`.
+- `execute_limit_buy`: `account_id`, `order_id`, `execution_id`, `price_minor`,
+  `occurred_at`.
 - `account`: returns available/reserved cash, positions, and order views.
 - `order`: returns one projected order view, or `null` when the account has no
   order with that identifier.

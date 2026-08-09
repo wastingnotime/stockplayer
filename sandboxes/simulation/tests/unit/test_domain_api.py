@@ -62,6 +62,18 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual(0, result["account"]["reserved_cash_minor"])
         self.assertEqual("cancelled", result["account"]["orders"]["limit-cancel-api"]["status"])
 
+    def test_draft_adapter_translates_limit_buy_execution(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        now = "2026-01-05T13:00:00Z"
+        facade.open_account({"account_id": "acct-execute-api", "display_name": "Execute Demo", "cash_minor": 100_000, "occurred_at": now})
+        facade.submit_limit_buy({"account_id": "acct-execute-api", "order_id": "limit-execute-api", "symbol": "AUR", "quantity": 10, "limit_price_minor": 2_000, "occurred_at": now})
+        result = facade.execute_limit_buy({"account_id": "acct-execute-api", "order_id": "limit-execute-api", "execution_id": "execute-api", "price_minor": 1_800, "occurred_at": now})
+        self.assertEqual(["LimitBuyExecuted"], result["event_types"])
+        self.assertEqual(82_000, result["account"]["available_cash_minor"])
+        self.assertEqual(0, result["account"]["reserved_cash_minor"])
+        self.assertEqual({"AUR": 10}, result["account"]["positions"])
+        self.assertEqual("filled", result["account"]["orders"]["limit-execute-api"]["status"])
+
 
 if __name__ == "__main__":
     unittest.main()
