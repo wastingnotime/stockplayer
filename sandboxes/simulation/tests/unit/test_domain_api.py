@@ -47,6 +47,8 @@ class SimulationApiFacadeTests(unittest.TestCase):
             facade.order("acct-api", "order-api"),
         )
         self.assertIsNone(facade.order("acct-api", "missing"))
+        self.assertEqual(result["account"]["ledger"], facade.ledger("acct-api"))
+        self.assertEqual([], facade.ledger("missing-account"))
 
     def test_draft_adapter_translates_market_sell(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
