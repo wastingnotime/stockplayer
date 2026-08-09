@@ -9,6 +9,7 @@ from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePar
 from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected
 from app.infrastructure.memory import AccountProjections, ProjectionFailure
 from app.simulation.invariants import cash_non_negative, ledger_explains_total_cash, positions_non_negative, reservations_non_negative
+from app.simulation.catalog import SCENARIOS, get_scenario, implemented_scenarios
 from app.domain.market import DeterministicPriceGenerator, MarketSession, PriceHistory, PriceTick, SessionState
 from app.domain.engines import ExecutionRequest, FullFillEngineV1, LiquidityCappedEngineV2, compare_engines
 from app.simulation.environment import StockplayerEnvironment
@@ -161,6 +162,15 @@ class AccountTests(unittest.TestCase):
         self.assertTrue(positions_non_negative(environment.projections))
         self.assertTrue(reservations_non_negative(environment.projections))
         self.assertTrue(ledger_explains_total_cash(environment.projections))
+
+    def test_scenario_catalog_has_unique_ids_and_explicit_planned_boundaries(self):
+        ids = [scenario.scenario_id for scenario in SCENARIOS]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertEqual("implemented", get_scenario("simple_purchase").status)
+        self.assertEqual("planned", get_scenario("sell_reservation").status)
+        self.assertGreaterEqual(len(implemented_scenarios()), 10)
+        with self.assertRaises(KeyError):
+            get_scenario("does-not-exist")
 
     def test_projection_rebuild_matches_incremental_projection(self):
         environment = StockplayerEnvironment({"AUR": 1_800})

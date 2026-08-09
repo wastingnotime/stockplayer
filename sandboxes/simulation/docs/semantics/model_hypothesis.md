@@ -55,7 +55,8 @@ event, and replaying an event stream reconstructs the same account state.
 19. Execution-engine comparison (built).
 20. Runtime engine comparison evidence (built).
 21. Invariant catalog (built).
-22. Released API and browser adapter contracts.
+22. Scenario catalog (built).
+23. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.
