@@ -74,6 +74,18 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual({"AUR": 10}, result["account"]["positions"])
         self.assertEqual("filled", result["account"]["orders"]["limit-execute-api"]["status"])
 
+    def test_draft_adapter_translates_partial_limit_buy_execution(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        now = "2026-01-05T13:00:00Z"
+        facade.open_account({"account_id": "acct-partial-api", "display_name": "Partial Demo", "cash_minor": 100_000, "occurred_at": now})
+        facade.submit_limit_buy({"account_id": "acct-partial-api", "order_id": "limit-partial-api", "symbol": "AUR", "quantity": 10, "limit_price_minor": 2_000, "occurred_at": now})
+        result = facade.execute_partial_limit_buy({"account_id": "acct-partial-api", "order_id": "limit-partial-api", "execution_id": "partial-api", "quantity": 4, "price_minor": 1_800, "occurred_at": now})
+        self.assertEqual(["LimitBuyPartiallyExecuted"], result["event_types"])
+        self.assertEqual(80_800, result["account"]["available_cash_minor"])
+        self.assertEqual(12_000, result["account"]["reserved_cash_minor"])
+        self.assertEqual({"AUR": 4}, result["account"]["positions"])
+        self.assertEqual("partially_filled", result["account"]["orders"]["limit-partial-api"]["status"])
+
 
 if __name__ == "__main__":
     unittest.main()
