@@ -38,11 +38,12 @@ event, and replaying an event stream reconstructs the same account state.
 4. Market sell and quantity reservation.
 3. Limit-buy cash reservation (built).
 4. Cancellation and reservation release (built).
-5. Partial execution and average acquisition cost.
-6. Duplicate execution defense and projection rebuild.
-7. Failure/recovery and projection lag.
-8. Execution-engine comparison.
-9. Released API and browser adapter contracts.
+5. Reserved execution and settlement (built).
+6. Partial execution and average acquisition cost.
+7. Duplicate execution defense and projection rebuild.
+8. Failure/recovery and projection lag.
+9. Execution-engine comparison.
+10. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.

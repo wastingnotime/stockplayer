@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 
-from app.application.purchase import CancelLimitBuy, SubmitLimitBuy, SubmitMarketBuy
-from app.domain.model import Account, DomainError, LimitBuyReserved, OrderCancelled, OrderRejected
+from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, SubmitLimitBuy, SubmitMarketBuy
+from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyReserved, OrderCancelled, OrderRejected
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -88,6 +88,32 @@ class AccountTests(unittest.TestCase):
 
         self.assertEqual(before, environment.store.load("account-1"))
         self.assertEqual(100_000, environment.projections.cash_minor["account-1"])
+
+    def test_limit_buy_executes_below_limit_and_releases_unused_reservation(self):
+        environment = StockplayerEnvironment({"AUR": 1_800})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.limit_buy(SubmitLimitBuy("account-1", "limit-1", "AUR", 20, 2_000, NOW))
+
+        events = environment.execute_limit_buy(ExecuteLimitBuy("account-1", "limit-1", "execution-1", 1_800, NOW))
+        self.assertIsInstance(events[0], LimitBuyExecuted)
+        self.assertEqual(64_000, environment.projections.cash_minor["account-1"])
+        self.assertEqual(0, environment.projections.reserved_cash_minor["account-1"])
+        self.assertEqual(20, environment.projections.positions[("account-1", "AUR")])
+        self.assertEqual(-36_000, environment.projections.ledger["account-1"][-1].amount_minor)
+        replayed = Account.rehydrate(environment.store.load("account-1"))
+        self.assertEqual(64_000, replayed.available_cash_minor)
+        self.assertEqual({}, replayed.reservations)
+
+    def test_limit_buy_above_limit_does_not_consume_reservation(self):
+        environment = StockplayerEnvironment({"AUR": 2_100})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.limit_buy(SubmitLimitBuy("account-1", "limit-1", "AUR", 20, 2_000, NOW))
+
+        with self.assertRaisesRegex(DomainError, "exceeds limit"):
+            environment.execute_limit_buy(ExecuteLimitBuy("account-1", "limit-1", "execution-1", 2_100, NOW))
+
+        account = Account.rehydrate(environment.store.load("account-1"))
+        self.assertEqual(40_000, account.reserved_cash_minor)
 
 
 if __name__ == "__main__":

@@ -106,3 +106,28 @@ class CancelLimitBuyHandler:
         self.store.append(command.account_id, len(history), events)
         self.projections.project(events)
         return events
+
+
+@dataclass(frozen=True)
+class ExecuteLimitBuy:
+    account_id: str
+    order_id: str
+    execution_id: str
+    price_minor: int
+    occurred_at: datetime
+
+
+class ExecuteLimitBuyHandler:
+    def __init__(self, store: EventStore, market: MarketData, projections: ProjectionSink) -> None:
+        self.store = store
+        self.market = market
+        self.projections = projections
+
+    def handle(self, command: ExecuteLimitBuy) -> list[DomainEvent]:
+        history = self.store.load(command.account_id)
+        account = Account.rehydrate(history)
+        account.execute_limit_buy(command.order_id, command.execution_id, command.price_minor, command.occurred_at)
+        events = account.pull_events()
+        self.store.append(command.account_id, len(history), events)
+        self.projections.project(events)
+        return events

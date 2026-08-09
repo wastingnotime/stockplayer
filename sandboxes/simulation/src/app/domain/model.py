@@ -67,7 +67,24 @@ class OrderCancelled:
     occurred_at: datetime
 
 
-DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | OrderRejected | LimitBuyReserved | OrderCancelled
+@dataclass(frozen=True)
+class LimitBuyExecuted:
+    account_id: str
+    order_id: str
+    execution_id: str
+    symbol: str
+    quantity: int
+    price_minor: int
+    reserved_cash_minor: int
+    released_cash_minor: int
+    occurred_at: datetime
+
+    @property
+    def cost_minor(self) -> int:
+        return self.quantity * self.price_minor
+
+
+DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | OrderRejected | LimitBuyReserved | OrderCancelled | LimitBuyExecuted
 
 
 class DomainError(Exception):
@@ -80,6 +97,7 @@ class Account:
         self.available_cash_minor = 0
         self.reserved_cash_minor = 0
         self.reservations: dict[str, int] = {}
+        self.reservation_details: dict[str, tuple[str, int, int]] = {}
         self.positions: dict[str, int] = {}
         self.version = 0
         self._pending: list[DomainEvent] = []
@@ -148,6 +166,22 @@ class Account:
             raise DomainError("open limit-buy order not found") from error
         self._record(OrderCancelled(self.account_id or "", order_id, reserved, now))
 
+    def execute_limit_buy(self, order_id: str, execution_id: str, price_minor: int, now: datetime) -> None:
+        self._require_open()
+        price_minor = positive(price_minor, "price_minor")
+        try:
+            symbol, quantity, limit_price = self.reservation_details[order_id]
+            reserved = self.reservations[order_id]
+        except KeyError as error:
+            raise DomainError("open limit-buy order not found") from error
+        if price_minor > limit_price:
+            raise DomainError("current price exceeds limit price")
+        cost = quantity * price_minor
+        self._record(LimitBuyExecuted(
+            self.account_id or "", order_id, execution_id, symbol, quantity,
+            price_minor, reserved, reserved - cost, now,
+        ))
+
     def pull_events(self) -> list[DomainEvent]:
         events, self._pending = self._pending, []
         return events
@@ -172,8 +206,16 @@ class Account:
             self.available_cash_minor -= event.reserved_cash_minor
             self.reserved_cash_minor += event.reserved_cash_minor
             self.reservations[event.order_id] = event.reserved_cash_minor
+            self.reservation_details[event.order_id] = (event.symbol, event.quantity, event.limit_price_minor)
         elif isinstance(event, OrderCancelled):
             self.available_cash_minor += event.released_cash_minor
             self.reserved_cash_minor -= event.released_cash_minor
             del self.reservations[event.order_id]
+            del self.reservation_details[event.order_id]
+        elif isinstance(event, LimitBuyExecuted):
+            self.available_cash_minor += event.released_cash_minor
+            self.reserved_cash_minor -= event.reserved_cash_minor
+            self.positions[event.symbol] = self.positions.get(event.symbol, 0) + event.quantity
+            del self.reservations[event.order_id]
+            del self.reservation_details[event.order_id]
         self.version += 1

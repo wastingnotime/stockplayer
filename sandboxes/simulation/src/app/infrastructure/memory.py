@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyReserved, MarketBuyExecuted, OrderCancelled
+from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyExecuted, LimitBuyReserved, MarketBuyExecuted, OrderCancelled
 
 
 class ConcurrencyError(Exception):
@@ -70,4 +70,11 @@ class AccountProjections:
             elif isinstance(event, OrderCancelled):
                 self.cash_minor[event.account_id] += event.released_cash_minor
                 self.reserved_cash_minor[event.account_id] -= event.released_cash_minor
+                del self.reservations[(event.account_id, event.order_id)]
+            elif isinstance(event, LimitBuyExecuted):
+                self.cash_minor[event.account_id] += event.released_cash_minor
+                self.reserved_cash_minor[event.account_id] -= event.reserved_cash_minor
+                self.ledger[event.account_id].append(LedgerEntry("trade_settlement", -event.cost_minor, event.execution_id))
+                key = (event.account_id, event.symbol)
+                self.positions[key] = self.positions.get(key, 0) + event.quantity
                 del self.reservations[(event.account_id, event.order_id)]
