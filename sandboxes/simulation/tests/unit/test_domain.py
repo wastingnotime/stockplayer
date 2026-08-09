@@ -9,6 +9,7 @@ from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePar
 from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected
 from app.infrastructure.memory import AccountProjections, ProjectionFailure
 from app.domain.market import DeterministicPriceGenerator, MarketSession, PriceHistory, PriceTick, SessionState
+from app.domain.engines import ExecutionRequest, FullFillEngineV1, LiquidityCappedEngineV2, compare_engines
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -247,6 +248,14 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(session.events, rebuilt.events)
         with self.assertRaisesRegex(ValueError, "cannot transition"):
             session.open(NOW)
+
+    def test_engine_comparison_is_deterministic_and_surfaces_partial_fill_difference(self):
+        request = ExecutionRequest("order-1", "AUR", 10, 2_500, 4)
+        first = compare_engines(request, (FullFillEngineV1(), LiquidityCappedEngineV2()))
+        second = compare_engines(request, (FullFillEngineV1(), LiquidityCappedEngineV2()))
+        self.assertEqual(first, second)
+        self.assertEqual((0, 4), tuple(decision.filled_quantity for decision in first))
+        self.assertEqual(("insufficient liquidity for full fill", "partial fill"), tuple(decision.reason for decision in first))
 
     def test_closed_session_rejects_new_buy_without_economic_effect(self):
         environment = StockplayerEnvironment({"AUR": 2_500})
