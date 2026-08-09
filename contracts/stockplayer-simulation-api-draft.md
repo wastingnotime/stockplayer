@@ -13,6 +13,8 @@ invariants, persistence, event sequencing, or session policy.
   `quantity`, `occurred_at`.
 - `submit_market_sell`: `account_id`, `order_id`, `execution_id`, `symbol`,
   `quantity`, `price_minor`, `occurred_at`.
+- `reserve_market_sell`: `account_id`, `order_id`, `symbol`, `quantity`,
+  `occurred_at`.
 - `submit_limit_buy`: `account_id`, `order_id`, `symbol`, `quantity`,
   `limit_price_minor`, `occurred_at`.
 - `cancel_limit_buy`: `account_id`, `order_id`, `occurred_at`.
@@ -20,7 +22,8 @@ invariants, persistence, event sequencing, or session policy.
   `occurred_at`.
 - `execute_partial_limit_buy`: `account_id`, `order_id`, `execution_id`,
   `quantity`, `price_minor`, `occurred_at`.
-- `account`: returns available/reserved cash, positions, and order views.
+- `account`: returns available/reserved cash, positions, reserved quantities,
+  and order views.
 - `order`: returns one projected order view, or `null` when the account has no
   order with that identifier.
 

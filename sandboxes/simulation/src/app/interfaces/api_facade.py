@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import datetime
 
-from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell
+from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell, SubmitMarketSellReservation
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -44,6 +44,14 @@ class SimulationApiFacade:
         ))
         return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
 
+    def reserve_market_sell(self, payload: dict[str, object]) -> dict[str, object]:
+        account_id = str(payload["account_id"])
+        events = self.environment.reserve_sell(SubmitMarketSellReservation(
+            account_id, str(payload["order_id"]), str(payload["symbol"]),
+            int(payload["quantity"]), _time(str(payload["occurred_at"])),
+        ))
+        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+
     def submit_limit_buy(self, payload: dict[str, object]) -> dict[str, object]:
         account_id = str(payload["account_id"])
         events = self.environment.limit_buy(SubmitLimitBuy(
@@ -80,11 +88,13 @@ class SimulationApiFacade:
         projection = self.environment.projections
         positions = {symbol: quantity for (owner, symbol), quantity in projection.positions.items() if owner == account_id}
         orders = {order_id: asdict(view) for (owner, order_id), view in projection.orders.items() if owner == account_id}
+        reserved_quantities = {order_id: quantity for (owner, order_id), quantity in projection.reserved_quantities.items() if owner == account_id}
         return {
             "account_id": account_id,
             "available_cash_minor": projection.cash_minor.get(account_id, 0),
             "reserved_cash_minor": projection.reserved_cash_minor.get(account_id, 0),
             "positions": positions,
+            "reserved_quantities": reserved_quantities,
             "orders": orders,
         }
 
