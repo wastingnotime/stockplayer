@@ -52,6 +52,17 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual({"sell-reserve-api": 4}, result["account"]["reserved_quantities"])
         self.assertEqual("accepted", result["account"]["orders"]["sell-reserve-api"]["status"])
 
+    def test_draft_adapter_translates_market_sell_reservation_cancellation(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        now = "2026-01-05T13:00:00Z"
+        facade.open_account({"account_id": "acct-cancel-sell-api", "display_name": "Cancel Sell Demo", "cash_minor": 100_000, "occurred_at": now})
+        facade.submit_market_buy({"account_id": "acct-cancel-sell-api", "order_id": "buy-cancel-sell", "execution_id": "buy-cancel-execution", "symbol": "AUR", "quantity": 10, "occurred_at": now})
+        facade.reserve_market_sell({"account_id": "acct-cancel-sell-api", "order_id": "sell-cancel-api", "symbol": "AUR", "quantity": 4, "occurred_at": now})
+        result = facade.cancel_market_sell_reservation({"account_id": "acct-cancel-sell-api", "order_id": "sell-cancel-api", "occurred_at": now})
+        self.assertEqual(["SellReservationCancelled"], result["event_types"])
+        self.assertEqual({}, result["account"]["reserved_quantities"])
+        self.assertEqual("cancelled", result["account"]["orders"]["sell-cancel-api"]["status"])
+
     def test_draft_adapter_translates_limit_buy_reservation(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
         now = "2026-01-05T13:00:00Z"

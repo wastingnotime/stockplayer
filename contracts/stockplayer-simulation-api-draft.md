@@ -15,6 +15,7 @@ invariants, persistence, event sequencing, or session policy.
   `quantity`, `price_minor`, `occurred_at`.
 - `reserve_market_sell`: `account_id`, `order_id`, `symbol`, `quantity`,
   `occurred_at`.
+- `cancel_market_sell_reservation`: `account_id`, `order_id`, `occurred_at`.
 - `submit_limit_buy`: `account_id`, `order_id`, `symbol`, `quantity`,
   `limit_price_minor`, `occurred_at`.
 - `cancel_limit_buy`: `account_id`, `order_id`, `occurred_at`.
