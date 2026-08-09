@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 import random
 
 
@@ -20,6 +21,53 @@ class PriceTick:
             raise ValueError("price_minor must be positive")
         if self.sequence <= 0:
             raise ValueError("sequence must be positive")
+
+
+class SessionState(str, Enum):
+    SCHEDULED = "scheduled"
+    OPEN = "open"
+    PAUSED = "paused"
+    CLOSED = "closed"
+
+
+@dataclass(frozen=True)
+class MarketSessionChanged:
+    from_state: SessionState
+    to_state: SessionState
+    occurred_at: datetime
+
+
+class MarketSession:
+    """Replayable exchange availability state; closed is terminal."""
+
+    def __init__(self) -> None:
+        self.state = SessionState.SCHEDULED
+        self.events: list[MarketSessionChanged] = []
+
+    def open(self, now: datetime) -> None:
+        self._transition(SessionState.OPEN, now, (SessionState.SCHEDULED, SessionState.PAUSED))
+
+    def pause(self, now: datetime) -> None:
+        self._transition(SessionState.PAUSED, now, (SessionState.OPEN,))
+
+    def close(self, now: datetime) -> None:
+        self._transition(SessionState.CLOSED, now, (SessionState.OPEN, SessionState.PAUSED))
+
+    def rebuild(self, events: list[MarketSessionChanged]) -> None:
+        self.state = SessionState.SCHEDULED
+        self.events.clear()
+        for event in events:
+            if event.from_state != self.state:
+                raise ValueError("session event history is not contiguous")
+            self.state = event.to_state
+            self.events.append(event)
+
+    def _transition(self, target: SessionState, now: datetime, allowed: tuple[SessionState, ...]) -> None:
+        if self.state not in allowed:
+            raise ValueError(f"cannot transition session from {self.state} to {target}")
+        event = MarketSessionChanged(self.state, target, now)
+        self.state = target
+        self.events.append(event)
 
 
 class PriceHistory:

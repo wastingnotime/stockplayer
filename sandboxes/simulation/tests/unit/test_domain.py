@@ -8,7 +8,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell
 from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected
 from app.infrastructure.memory import AccountProjections
-from app.domain.market import DeterministicPriceGenerator, PriceHistory, PriceTick
+from app.domain.market import DeterministicPriceGenerator, MarketSession, PriceHistory, PriceTick, SessionState
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -233,6 +233,20 @@ class AccountTests(unittest.TestCase):
         second_ticks = generate()
         self.assertEqual(first_ticks, second_ticks)
         self.assertTrue(all(t.source_seed == 42 and t.price_minor > 0 for t in first_ticks))
+
+    def test_market_session_transitions_are_replayable_and_closed_is_terminal(self):
+        session = MarketSession()
+        session.open(NOW)
+        session.pause(NOW)
+        session.open(NOW)
+        session.close(NOW)
+        self.assertEqual(SessionState.CLOSED, session.state)
+        rebuilt = MarketSession()
+        rebuilt.rebuild(session.events)
+        self.assertEqual(session.state, rebuilt.state)
+        self.assertEqual(session.events, rebuilt.events)
+        with self.assertRaisesRegex(ValueError, "cannot transition"):
+            session.open(NOW)
 
 
 if __name__ == "__main__":
