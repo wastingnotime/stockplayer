@@ -6,6 +6,7 @@ from app.application.purchase import SubmitMarketBuy
 from app.domain.engines import FullFillEngineV1, LiquidityCappedEngineV2, ExecutionRequest, compare_engines
 from app.domain.market import DeterministicPriceGenerator, PriceHistory
 from app.infrastructure.memory import ProjectionFailure
+from app.simulation.invariants import cash_non_negative, ledger_explains_total_cash, positions_non_negative, reservations_non_negative
 from app.simulation.environment import StockplayerEnvironment
 from mrl_simulation_runtime.actors import Actor
 from mrl_simulation_runtime.invariants import Invariant
@@ -70,8 +71,10 @@ def create_simulation() -> Scenario:
             InitialScheduledAction(INITIAL_TIME + timedelta(seconds=3), close_market, "close_market_session", "Stockplayer", "session-002"),
         ],
         invariants=[
-            Invariant("cash never negative", lambda context: not hasattr(context, "environment") or all(value >= 0 for value in context.environment.projections.cash_minor.values())),
-            Invariant("ledger explains cash", lambda context: not hasattr(context, "environment") or all(sum(entry.amount_minor for entry in context.environment.projections.ledger[account_id]) == cash for account_id, cash in context.environment.projections.cash_minor.items())),
+            Invariant("cash never negative", lambda context: not hasattr(context, "environment") or cash_non_negative(context.environment.projections)),
+            Invariant("positions never negative", lambda context: not hasattr(context, "environment") or positions_non_negative(context.environment.projections)),
+            Invariant("reservations never negative", lambda context: not hasattr(context, "environment") or reservations_non_negative(context.environment.projections)),
+            Invariant("ledger explains total cash", lambda context: not hasattr(context, "environment") or ledger_explains_total_cash(context.environment.projections)),
         ],
         observatory_nodes=[
             ObservatoryNode("actor", "Demo user", "actor", "simulation"),

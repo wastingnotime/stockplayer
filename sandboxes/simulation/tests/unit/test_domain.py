@@ -8,6 +8,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell
 from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected
 from app.infrastructure.memory import AccountProjections, ProjectionFailure
+from app.simulation.invariants import cash_non_negative, ledger_explains_total_cash, positions_non_negative, reservations_non_negative
 from app.domain.market import DeterministicPriceGenerator, MarketSession, PriceHistory, PriceTick, SessionState
 from app.domain.engines import ExecutionRequest, FullFillEngineV1, LiquidityCappedEngineV2, compare_engines
 from app.simulation.environment import StockplayerEnvironment
@@ -156,6 +157,10 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(before.reserved_cash_minor, after.reserved_cash_minor)
         self.assertEqual(before.positions, after.positions)
         self.assertEqual(2, len(environment.projections.ledger["account-1"]))
+        self.assertTrue(cash_non_negative(environment.projections))
+        self.assertTrue(positions_non_negative(environment.projections))
+        self.assertTrue(reservations_non_negative(environment.projections))
+        self.assertTrue(ledger_explains_total_cash(environment.projections))
 
     def test_projection_rebuild_matches_incremental_projection(self):
         environment = StockplayerEnvironment({"AUR": 1_800})
