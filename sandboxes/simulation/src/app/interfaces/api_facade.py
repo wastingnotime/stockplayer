@@ -109,7 +109,7 @@ class SimulationApiFacade:
             account_id, str(payload["order_id"]), str(payload["execution_id"]),
             int(payload["quantity"]), int(payload["price_minor"]), _time(str(payload["occurred_at"])),
         ))
-        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+        return self._command_response(events, account_id)
 
     def account(self, account_id: str) -> dict[str, object]:
         projection = self.environment.projections
