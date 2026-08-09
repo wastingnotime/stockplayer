@@ -17,6 +17,8 @@ class SimplePurchaseScenarioTests(unittest.TestCase):
 
         self.assertEqual(first, second)
         self.assertIn('"cash_minor": 75000', first)
+        self.assertIn('"name": "price_tick"', first)
+        self.assertIn('"name": "unrealized_result_updated"', first)
         self.assertNotIn('"passed": false', first)
 
 

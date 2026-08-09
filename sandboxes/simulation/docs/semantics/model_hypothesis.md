@@ -46,9 +46,10 @@ event, and replaying an event stream reconstructs the same account state.
 10. Unrealized result valuation (built).
 11. Deterministic price ticks (built).
 12. Seeded price generation (built).
-13. Failure/recovery and projection lag.
-14. Execution-engine comparison.
-15. Released API and browser adapter contracts.
+13. Scenario price advancement and valuation observations (built).
+14. Failure/recovery and projection lag.
+15. Execution-engine comparison.
+16. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.

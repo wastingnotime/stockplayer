@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from app.application.purchase import SubmitMarketBuy
+from app.domain.market import DeterministicPriceGenerator, PriceHistory
 from app.simulation.environment import StockplayerEnvironment
 from mrl_simulation_runtime.actors import Actor
 from mrl_simulation_runtime.invariants import Invariant
@@ -13,6 +14,8 @@ INITIAL_TIME = datetime(2026, 1, 5, 13, 0, tzinfo=timezone.utc)
 
 def create_simulation() -> Scenario:
     environment = StockplayerEnvironment({"AUR": 2_500})
+    price_history = PriceHistory()
+    price_generator = DeterministicPriceGenerator(20260105)
 
     def fund_account(context) -> None:
         environment.open_funded_account("acct-demo", "Demo Architect", 100_000, context.clock.now())
@@ -24,6 +27,14 @@ def create_simulation() -> Scenario:
         context.emit("command", "market_buy_submitted", source="DemoUser", actor="demo-user", correlation_id="order-001", payload={"symbol": "AUR", "quantity": 10})
         context.emit("domain_events", "market_buy_executed", source="Stockplayer", actor="demo-user", correlation_id="order-001", payload={"event_count": len(events), "cash_minor": environment.projections.cash_minor["acct-demo"], "position_quantity": environment.projections.positions[("acct-demo", "AUR")]})
 
+    def advance_market(context) -> None:
+        tick = price_generator.next_tick("AUR", environment.market.price_minor("AUR"), 1, context.clock.now())
+        price_history.append(tick)
+        environment.market.prices["AUR"] = tick.price_minor
+        unrealized = environment.projections.unrealized_result_minor("acct-demo", "AUR", tick.price_minor)
+        context.emit("market_fact", "price_tick", source="SeededMarket", actor="market-simulator", correlation_id="price-001", payload={"symbol": tick.symbol, "price_minor": tick.price_minor, "sequence": tick.sequence, "source_seed": tick.source_seed})
+        context.emit("projection", "unrealized_result_updated", source="Stockplayer", actor="market-simulator", correlation_id="price-001", payload={"symbol": "AUR", "unrealized_result_minor": unrealized})
+
     return Scenario(
         name="stockplayer-simple-purchase", seed=20260105,
         initial_time=INITIAL_TIME, run_id="simple-purchase-20260105",
@@ -31,6 +42,7 @@ def create_simulation() -> Scenario:
         scheduled_actions=[
             InitialScheduledAction(INITIAL_TIME, fund_account, "fund_account", "Stockplayer", "setup-001"),
             InitialScheduledAction(INITIAL_TIME + timedelta(seconds=1), purchase, "submit_market_buy", "DemoUser", "order-001"),
+            InitialScheduledAction(INITIAL_TIME + timedelta(seconds=2), advance_market, "advance_market_price", "SeededMarket", "price-001"),
         ],
         invariants=[
             Invariant("cash never negative", lambda context: not hasattr(context, "environment") or all(value >= 0 for value in context.environment.projections.cash_minor.values())),
@@ -41,10 +53,12 @@ def create_simulation() -> Scenario:
             ObservatoryNode("use-case", "Submit market buy", "use_case", "application"),
             ObservatoryNode("account", "Account", "aggregate", "domain"),
             ObservatoryNode("projections", "Ledger and position", "projection", "application"),
+            ObservatoryNode("market", "Seeded market", "provider", "simulation"),
         ],
         observatory_edges=[
             ObservatoryEdge("actor", "use-case", "submits"),
             ObservatoryEdge("use-case", "account", "decides"),
             ObservatoryEdge("account", "projections", "events update"),
+            ObservatoryEdge("market", "projections", "valuation input"),
         ],
     )
