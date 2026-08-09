@@ -39,6 +39,8 @@ invariants, persistence, event sequencing, or session policy.
 - `market_price`: returns one symbol price, or raises the market adapter's
   unknown-symbol error.
 - `ledger`: returns projected ledger entries for one account in event order.
+- `accounts`: returns projected account identifiers in deterministic lexical
+  order.
 
 Money and prices are integer minor units. Timestamps are ISO-8601 with an
 explicit offset; the draft adapter rejects naive timestamps at its boundary.

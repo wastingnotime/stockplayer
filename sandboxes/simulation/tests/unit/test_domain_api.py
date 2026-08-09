@@ -15,6 +15,14 @@ class SimulationApiFacadeTests(unittest.TestCase):
         facade.open_account({"account_id": "acct-session-api", "display_name": "Session Demo", "cash_minor": 100_000, "occurred_at": "2026-01-05T13:00:00Z"})
         self.assertEqual({"state": "open"}, facade.market_session())
 
+    def test_draft_adapter_lists_projected_accounts(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        self.assertEqual([], facade.accounts())
+        now = "2026-01-05T13:00:00Z"
+        facade.open_account({"account_id": "acct-z", "display_name": "Z", "cash_minor": 1_000, "occurred_at": now})
+        facade.open_account({"account_id": "acct-a", "display_name": "A", "cash_minor": 2_000, "occurred_at": now})
+        self.assertEqual(["acct-a", "acct-z"], facade.accounts())
+
     def test_draft_adapter_exposes_current_market_prices(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500, "BEX": 1_100}))
         self.assertEqual({"AUR": 2_500, "BEX": 1_100}, facade.market_prices())

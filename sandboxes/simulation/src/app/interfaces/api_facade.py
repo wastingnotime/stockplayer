@@ -150,3 +150,6 @@ class SimulationApiFacade:
 
     def ledger(self, account_id: str) -> list[dict[str, object]]:
         return [asdict(entry) for entry in self.environment.projections.ledger.get(account_id, [])]
+
+    def accounts(self) -> list[str]:
+        return sorted(self.environment.projections.cash_minor)
