@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Protocol
 
 from app.domain.market import SessionState
-from app.domain.model import Account, DomainError, DomainEvent, DuplicateExecution
+from app.domain.model import Account, DomainError, DomainEvent, DuplicateExecution, DuplicateOrder
 
 
 class EventStore(Protocol):
@@ -57,7 +57,7 @@ class SubmitMarketBuyHandler:
                 command.quantity, self.market.price_minor(command.symbol),
                 command.occurred_at,
             )
-        except DuplicateExecution:
+        except (DuplicateExecution, DuplicateOrder):
             return []
         except DomainError as error:
             # A rejected command is an auditable domain fact, but has no
@@ -95,7 +95,7 @@ class SubmitMarketSellHandler:
                 command.order_id, command.execution_id, command.symbol,
                 command.quantity, command.price_minor, command.occurred_at,
             )
-        except DuplicateExecution:
+        except (DuplicateExecution, DuplicateOrder):
             return []
         except DomainError as error:
             account.reject_order(command.order_id, command.symbol, str(error), command.occurred_at)
@@ -130,6 +130,8 @@ class SubmitLimitBuyHandler:
                 command.order_id, command.symbol, command.quantity,
                 command.limit_price_minor, command.occurred_at,
             )
+        except DuplicateOrder:
+            return []
         except DomainError as error:
             account.reject_order(command.order_id, command.symbol, str(error), command.occurred_at)
         events = account.pull_events()
@@ -159,6 +161,8 @@ class SubmitMarketSellReservationHandler:
         try:
             require_open_session(self.session)
             account.reserve_market_sell(command.order_id, command.symbol, command.quantity, command.occurred_at)
+        except DuplicateOrder:
+            return []
         except DomainError as error:
             account.reject_order(command.order_id, command.symbol, str(error), command.occurred_at)
         events = account.pull_events()

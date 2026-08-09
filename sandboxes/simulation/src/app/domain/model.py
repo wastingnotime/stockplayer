@@ -177,6 +177,10 @@ class DuplicateExecution(DomainError):
     pass
 
 
+class DuplicateOrder(DomainError):
+    pass
+
+
 class Account:
     def __init__(self) -> None:
         self.account_id: str | None = None
@@ -187,6 +191,7 @@ class Account:
         self.reserved_quantities: dict[str, int] = {}
         self.sell_reservation_details: dict[str, tuple[str, int]] = {}
         self.execution_ids: set[str] = set()
+        self.order_ids: set[str] = set()
         self.positions: dict[str, int] = {}
         self.version = 0
         self._pending: list[DomainEvent] = []
@@ -214,6 +219,7 @@ class Account:
         quantity: int, price_minor: int, now: datetime,
     ) -> None:
         self._require_open()
+        self._ensure_new_order(order_id)
         self._ensure_new_execution(execution_id)
         quantity = positive(quantity, "quantity")
         price_minor = positive(price_minor, "price_minor")
@@ -230,6 +236,7 @@ class Account:
         quantity: int, price_minor: int, now: datetime,
     ) -> None:
         self._require_open()
+        self._ensure_new_order(order_id)
         self._ensure_new_execution(execution_id)
         quantity = positive(quantity, "quantity")
         price_minor = positive(price_minor, "price_minor")
@@ -281,6 +288,7 @@ class Account:
         limit_price_minor: int, now: datetime,
     ) -> None:
         self._require_open()
+        self._ensure_new_order(order_id)
         quantity = positive(quantity, "quantity")
         limit_price_minor = positive(limit_price_minor, "limit_price_minor")
         if order_id in self.reservations:
@@ -295,6 +303,7 @@ class Account:
 
     def reserve_market_sell(self, order_id: str, symbol: str, quantity: int, now: datetime) -> None:
         self._require_open()
+        self._ensure_new_order(order_id)
         quantity = positive(quantity, "quantity")
         if order_id in self.reserved_quantities:
             raise DomainError("order already exists")
@@ -378,6 +387,12 @@ class Account:
         if execution_id in self.execution_ids:
             raise DuplicateExecution(f"execution {execution_id} already applied")
 
+    def _ensure_new_order(self, order_id: str) -> None:
+        if not order_id:
+            raise DomainError("order id is required")
+        if order_id in self.order_ids:
+            raise DuplicateOrder(f"order {order_id} already applied")
+
     def _reserved_sell_quantity(self, symbol: str) -> int:
         return sum(quantity for reserved_symbol, quantity in self.sell_reservation_details.values() if reserved_symbol == symbol)
 
@@ -390,11 +405,15 @@ class Account:
             self.account_id = event.account_id
         elif isinstance(event, CashDeposited):
             self.available_cash_minor += event.amount_minor
+        elif isinstance(event, OrderRejected):
+            self.order_ids.add(event.order_id)
         elif isinstance(event, MarketBuyExecuted):
+            self.order_ids.add(event.order_id)
             self.execution_ids.add(event.execution_id)
             self.available_cash_minor -= event.cost_minor
             self.positions[event.symbol] = self.positions.get(event.symbol, 0) + event.quantity
         elif isinstance(event, MarketSellExecuted):
+            self.order_ids.add(event.order_id)
             self.execution_ids.add(event.execution_id)
             self.available_cash_minor += event.proceeds_minor
             remaining = self.positions.get(event.symbol, 0) - event.quantity
@@ -403,6 +422,7 @@ class Account:
             else:
                 self.positions.pop(event.symbol, None)
         elif isinstance(event, SellReservationExecuted):
+            self.order_ids.add(event.order_id)
             self.execution_ids.add(event.execution_id)
             self.available_cash_minor += event.proceeds_minor
             remaining = self.positions.get(event.symbol, 0) - event.quantity
@@ -413,6 +433,7 @@ class Account:
             del self.reserved_quantities[event.order_id]
             del self.sell_reservation_details[event.order_id]
         elif isinstance(event, SellReservationPartiallyExecuted):
+            self.order_ids.add(event.order_id)
             self.execution_ids.add(event.execution_id)
             self.available_cash_minor += event.proceeds_minor
             remaining_position = self.positions.get(event.symbol, 0) - event.quantity
@@ -423,11 +444,13 @@ class Account:
             self.reserved_quantities[event.order_id] = event.remaining_quantity
             self.sell_reservation_details[event.order_id] = (event.symbol, event.remaining_quantity)
         elif isinstance(event, LimitBuyReserved):
+            self.order_ids.add(event.order_id)
             self.available_cash_minor -= event.reserved_cash_minor
             self.reserved_cash_minor += event.reserved_cash_minor
             self.reservations[event.order_id] = event.reserved_cash_minor
             self.reservation_details[event.order_id] = (event.symbol, event.quantity, event.limit_price_minor)
         elif isinstance(event, SellQuantityReserved):
+            self.order_ids.add(event.order_id)
             self.reserved_quantities[event.order_id] = event.quantity
             self.sell_reservation_details[event.order_id] = (event.symbol, event.quantity)
         elif isinstance(event, SellReservationCancelled):
@@ -439,6 +462,7 @@ class Account:
             del self.reservations[event.order_id]
             del self.reservation_details[event.order_id]
         elif isinstance(event, LimitBuyExecuted):
+            self.order_ids.add(event.order_id)
             self.execution_ids.add(event.execution_id)
             self.available_cash_minor += event.released_cash_minor
             self.reserved_cash_minor -= event.reserved_cash_minor
@@ -446,6 +470,7 @@ class Account:
             del self.reservations[event.order_id]
             del self.reservation_details[event.order_id]
         elif isinstance(event, LimitBuyPartiallyExecuted):
+            self.order_ids.add(event.order_id)
             self.execution_ids.add(event.execution_id)
             self.available_cash_minor += event.released_cash_minor
             self.reserved_cash_minor -= event.reserved_cash_minor

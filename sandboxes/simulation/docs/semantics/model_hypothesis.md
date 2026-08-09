@@ -62,7 +62,8 @@ event, and replaying an event stream reconstructs the same account state.
 26. Partial sell-reservation execution (built).
 27. Order-status projection (built).
 28. Runtime order timeline (built).
-29. Released API and browser adapter contracts.
+29. Order-command idempotency (built).
+30. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.

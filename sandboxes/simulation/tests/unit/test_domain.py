@@ -235,6 +235,17 @@ class AccountTests(unittest.TestCase):
         rejected = environment.reserve_sell(SubmitMarketSellReservation("account-1", "sell-res-2", "AUR", 9, NOW))
         self.assertEqual("rejected", environment.projections.orders[("account-1", "sell-res-2")].status)
 
+    def test_repeating_same_order_command_is_a_no_op_even_with_new_execution_id(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        first = environment.buy(SubmitMarketBuy("account-1", "buy-1", "execution-1", "AUR", 10, NOW))
+        before = environment.store.load("account-1")
+        second = environment.buy(SubmitMarketBuy("account-1", "buy-1", "execution-2", "AUR", 10, NOW))
+        self.assertEqual(1, len(first))
+        self.assertEqual([], second)
+        self.assertEqual(before, environment.store.load("account-1"))
+        self.assertEqual(75_000, environment.projections.cash_minor["account-1"])
+
     def test_projection_rebuild_matches_incremental_projection(self):
         environment = StockplayerEnvironment({"AUR": 1_800})
         environment.open_funded_account("account-1", "Ada", 100_000, NOW)
