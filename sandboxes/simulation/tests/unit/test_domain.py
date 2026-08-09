@@ -7,7 +7,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 
 from app.application.purchase import CancelLimitBuy, CancelMarketSellReservation, ExecuteLimitBuy, ExecuteMarketSellReservation, ExecutePartialLimitBuy, ExecutePartialMarketSellReservation, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell, SubmitMarketSellReservation
 from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected, SellQuantityReserved, SellReservationCancelled, SellReservationExecuted, SellReservationPartiallyExecuted
-from app.infrastructure.memory import AccountProjections, ProjectionFailure
+from app.infrastructure.memory import AccountProjections, OrderView, ProjectionFailure
 from app.simulation.invariants import cash_non_negative, ledger_explains_total_cash, positions_non_negative, reservations_non_negative
 from app.simulation.catalog import SCENARIOS, get_scenario, implemented_scenarios
 from app.domain.market import DeterministicPriceGenerator, MarketSession, PriceHistory, PriceTick, SessionState
@@ -223,6 +223,17 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(8, account.positions["AUR"])
         self.assertEqual(4, account.reserved_quantities["sell-res-1"])
         self.assertEqual(81_000, environment.projections.cash_minor["account-1"])
+
+    def test_order_status_projection_tracks_partial_and_rejected_lifecycles(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.buy(SubmitMarketBuy("account-1", "buy-1", "execution-buy", "AUR", 10, NOW))
+        environment.reserve_sell(SubmitMarketSellReservation("account-1", "sell-res-1", "AUR", 6, NOW))
+        environment.execute_partial_sell_reservation(ExecutePartialMarketSellReservation("account-1", "sell-res-1", "execution-partial", 2, 3_000, NOW))
+        view = environment.projections.orders[("account-1", "sell-res-1")]
+        self.assertEqual(OrderView("sell", "AUR", 6, 4, "partially_filled"), view)
+        rejected = environment.reserve_sell(SubmitMarketSellReservation("account-1", "sell-res-2", "AUR", 9, NOW))
+        self.assertEqual("rejected", environment.projections.orders[("account-1", "sell-res-2")].status)
 
     def test_projection_rebuild_matches_incremental_projection(self):
         environment = StockplayerEnvironment({"AUR": 1_800})

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketBuyExecuted, MarketSellExecuted, OrderCancelled, SellQuantityReserved, SellReservationCancelled, SellReservationExecuted, SellReservationPartiallyExecuted
+from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketBuyExecuted, MarketSellExecuted, OrderCancelled, OrderRejected, SellQuantityReserved, SellReservationCancelled, SellReservationExecuted, SellReservationPartiallyExecuted
 
 
 class ConcurrencyError(Exception):
@@ -45,6 +45,15 @@ class LedgerEntry:
     reference: str
 
 
+@dataclass(frozen=True)
+class OrderView:
+    side: str
+    symbol: str
+    requested_quantity: int
+    remaining_quantity: int
+    status: str
+
+
 class AccountProjections:
     def __init__(self) -> None:
         self.cash_minor: dict[str, int] = {}
@@ -56,6 +65,7 @@ class AccountProjections:
         self.position_cost_minor: dict[tuple[str, str], int] = {}
         self.realized_result_minor: dict[tuple[str, str], int] = {}
         self.processed_execution_ids: set[str] = set()
+        self.orders: dict[tuple[str, str], OrderView] = {}
         self._fail_next = False
 
     def inject_failure(self) -> None:
@@ -72,6 +82,7 @@ class AccountProjections:
         self.position_cost_minor.clear()
         self.realized_result_minor.clear()
         self.processed_execution_ids.clear()
+        self.orders.clear()
         self.project(events)
 
     def project(self, events: list[DomainEvent]) -> None:
@@ -94,44 +105,58 @@ class AccountProjections:
                 self.cash_minor[event.account_id] -= event.cost_minor
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", -event.cost_minor, event.execution_id))
                 self._record_buy(event.account_id, event.symbol, event.quantity, event.cost_minor)
+                self.orders[(event.account_id, event.order_id)] = OrderView("buy", event.symbol, event.quantity, 0, "filled")
             elif isinstance(event, MarketSellExecuted):
                 self.cash_minor[event.account_id] += event.proceeds_minor
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", event.proceeds_minor, event.execution_id))
                 self._record_sell(event.account_id, event.symbol, event.quantity, event.proceeds_minor)
+                self.orders[(event.account_id, event.order_id)] = OrderView("sell", event.symbol, event.quantity, 0, "filled")
             elif isinstance(event, SellReservationExecuted):
                 self.cash_minor[event.account_id] += event.proceeds_minor
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", event.proceeds_minor, event.execution_id))
                 self._record_sell(event.account_id, event.symbol, event.quantity, event.proceeds_minor)
                 del self.reserved_quantities[(event.account_id, event.order_id)]
+                self.orders[(event.account_id, event.order_id)] = OrderView("sell", event.symbol, event.quantity, 0, "filled")
             elif isinstance(event, SellReservationPartiallyExecuted):
                 self.cash_minor[event.account_id] += event.proceeds_minor
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", event.proceeds_minor, event.execution_id))
                 self._record_sell(event.account_id, event.symbol, event.quantity, event.proceeds_minor)
                 self.reserved_quantities[(event.account_id, event.order_id)] = event.remaining_quantity
+                self.orders[(event.account_id, event.order_id)] = OrderView("sell", event.symbol, event.quantity + event.remaining_quantity, event.remaining_quantity, "partially_filled")
             elif isinstance(event, LimitBuyReserved):
                 self.cash_minor[event.account_id] -= event.reserved_cash_minor
                 self.reserved_cash_minor[event.account_id] += event.reserved_cash_minor
                 self.reservations[(event.account_id, event.order_id)] = event.reserved_cash_minor
+                self.orders[(event.account_id, event.order_id)] = OrderView("buy", event.symbol, event.quantity, event.quantity, "accepted")
             elif isinstance(event, SellQuantityReserved):
                 self.reserved_quantities[(event.account_id, event.order_id)] = event.quantity
+                self.orders[(event.account_id, event.order_id)] = OrderView("sell", event.symbol, event.quantity, event.quantity, "accepted")
             elif isinstance(event, SellReservationCancelled):
                 del self.reserved_quantities[(event.account_id, event.order_id)]
+                order = self.orders[(event.account_id, event.order_id)]
+                self.orders[(event.account_id, event.order_id)] = OrderView(order.side, order.symbol, order.requested_quantity, order.remaining_quantity, "cancelled")
             elif isinstance(event, OrderCancelled):
                 self.cash_minor[event.account_id] += event.released_cash_minor
                 self.reserved_cash_minor[event.account_id] -= event.released_cash_minor
                 del self.reservations[(event.account_id, event.order_id)]
+                order = self.orders[(event.account_id, event.order_id)]
+                self.orders[(event.account_id, event.order_id)] = OrderView(order.side, order.symbol, order.requested_quantity, order.remaining_quantity, "cancelled")
             elif isinstance(event, LimitBuyExecuted):
                 self.cash_minor[event.account_id] += event.released_cash_minor
                 self.reserved_cash_minor[event.account_id] -= event.reserved_cash_minor
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", -event.cost_minor, event.execution_id))
                 self._record_buy(event.account_id, event.symbol, event.quantity, event.cost_minor)
                 del self.reservations[(event.account_id, event.order_id)]
+                self.orders[(event.account_id, event.order_id)] = OrderView("buy", event.symbol, event.quantity, 0, "filled")
             elif isinstance(event, LimitBuyPartiallyExecuted):
                 self.cash_minor[event.account_id] += event.released_cash_minor
                 self.reserved_cash_minor[event.account_id] -= event.reserved_cash_minor
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", -event.cost_minor, event.execution_id))
                 self._record_buy(event.account_id, event.symbol, event.quantity, event.cost_minor)
                 self.reservations[(event.account_id, event.order_id)] = event.remaining_reserved_cash_minor
+                self.orders[(event.account_id, event.order_id)] = OrderView("buy", event.symbol, event.quantity + event.remaining_quantity, event.remaining_quantity, "partially_filled")
+            elif isinstance(event, OrderRejected):
+                self.orders[(event.account_id, event.order_id)] = OrderView("unknown", event.symbol, 0, 0, "rejected")
 
     def average_cost_minor(self, account_id: str, symbol: str) -> int:
         key = (account_id, symbol)
