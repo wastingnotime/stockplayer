@@ -20,6 +20,10 @@ class SimulationApiFacade:
     def __init__(self, environment: StockplayerEnvironment) -> None:
         self.environment = environment
 
+    def _command_response(self, events: list[object], account_id: str) -> dict[str, object]:
+        event_types = [type(event).__name__ for event in events]
+        return {"accepted": "OrderRejected" not in event_types, "event_types": event_types, "account": self.account(account_id)}
+
     def open_account(self, payload: dict[str, object]) -> dict[str, object]:
         account_id = str(payload["account_id"])
         self.environment.open_funded_account(
@@ -33,7 +37,7 @@ class SimulationApiFacade:
             account_id, str(payload["order_id"]), str(payload["execution_id"]),
             str(payload["symbol"]), int(payload["quantity"]), _time(str(payload["occurred_at"])),
         ))
-        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+        return self._command_response(events, account_id)
 
     def submit_market_sell(self, payload: dict[str, object]) -> dict[str, object]:
         account_id = str(payload["account_id"])
@@ -42,7 +46,7 @@ class SimulationApiFacade:
             str(payload["symbol"]), int(payload["quantity"]), int(payload["price_minor"]),
             _time(str(payload["occurred_at"])),
         ))
-        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+        return self._command_response(events, account_id)
 
     def reserve_market_sell(self, payload: dict[str, object]) -> dict[str, object]:
         account_id = str(payload["account_id"])
@@ -50,14 +54,14 @@ class SimulationApiFacade:
             account_id, str(payload["order_id"]), str(payload["symbol"]),
             int(payload["quantity"]), _time(str(payload["occurred_at"])),
         ))
-        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+        return self._command_response(events, account_id)
 
     def cancel_market_sell_reservation(self, payload: dict[str, object]) -> dict[str, object]:
         account_id = str(payload["account_id"])
         events = self.environment.cancel_sell_reservation(CancelMarketSellReservation(
             account_id, str(payload["order_id"]), _time(str(payload["occurred_at"])),
         ))
-        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+        return self._command_response(events, account_id)
 
     def execute_market_sell_reservation(self, payload: dict[str, object]) -> dict[str, object]:
         account_id = str(payload["account_id"])
@@ -65,7 +69,7 @@ class SimulationApiFacade:
             account_id, str(payload["order_id"]), str(payload["execution_id"]),
             int(payload["price_minor"]), _time(str(payload["occurred_at"])),
         ))
-        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+        return self._command_response(events, account_id)
 
     def execute_partial_market_sell_reservation(self, payload: dict[str, object]) -> dict[str, object]:
         account_id = str(payload["account_id"])
@@ -73,7 +77,7 @@ class SimulationApiFacade:
             account_id, str(payload["order_id"]), str(payload["execution_id"]),
             int(payload["quantity"]), int(payload["price_minor"]), _time(str(payload["occurred_at"])),
         ))
-        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+        return self._command_response(events, account_id)
 
     def submit_limit_buy(self, payload: dict[str, object]) -> dict[str, object]:
         account_id = str(payload["account_id"])
@@ -82,14 +86,14 @@ class SimulationApiFacade:
             int(payload["quantity"]), int(payload["limit_price_minor"]),
             _time(str(payload["occurred_at"])),
         ))
-        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+        return self._command_response(events, account_id)
 
     def cancel_limit_buy(self, payload: dict[str, object]) -> dict[str, object]:
         account_id = str(payload["account_id"])
         events = self.environment.cancel_limit_buy(CancelLimitBuy(
             account_id, str(payload["order_id"]), _time(str(payload["occurred_at"])),
         ))
-        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+        return self._command_response(events, account_id)
 
     def execute_limit_buy(self, payload: dict[str, object]) -> dict[str, object]:
         account_id = str(payload["account_id"])
@@ -97,7 +101,7 @@ class SimulationApiFacade:
             account_id, str(payload["order_id"]), str(payload["execution_id"]),
             int(payload["price_minor"]), _time(str(payload["occurred_at"])),
         ))
-        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+        return self._command_response(events, account_id)
 
     def execute_partial_limit_buy(self, payload: dict[str, object]) -> dict[str, object]:
         account_id = str(payload["account_id"])

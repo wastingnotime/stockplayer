@@ -42,6 +42,7 @@ class SimulationApiFacadeTests(unittest.TestCase):
         result = facade.submit_market_buy({"account_id": "acct-api", "order_id": "order-api", "execution_id": "execution-api", "symbol": "AUR", "quantity": 10, "occurred_at": now})
         self.assertEqual(100_000, account["available_cash_minor"])
         self.assertEqual(["MarketBuyExecuted"], result["event_types"])
+        self.assertTrue(result["accepted"])
         self.assertEqual(75_000, result["account"]["available_cash_minor"])
         self.assertEqual(
             [{"entry_type": "initial_deposit", "amount_minor": 100_000, "reference": "deposit"},
@@ -68,6 +69,14 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual(["MarketBuyExecuted"], first["event_types"])
         self.assertEqual([], replay["event_types"])
         self.assertEqual(first["account"], replay["account"])
+
+    def test_draft_adapter_marks_domain_rejection_in_command_response(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        now = "2026-01-05T13:00:00Z"
+        facade.open_account({"account_id": "acct-rejected-api", "display_name": "Rejected", "cash_minor": 1_000, "occurred_at": now})
+        result = facade.submit_market_buy({"account_id": "acct-rejected-api", "order_id": "order-rejected", "execution_id": "execution-rejected", "symbol": "AUR", "quantity": 10, "occurred_at": now})
+        self.assertFalse(result["accepted"])
+        self.assertEqual(["OrderRejected"], result["event_types"])
 
     def test_draft_adapter_translates_market_sell(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))

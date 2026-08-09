@@ -6,8 +6,9 @@ The thin adapter translates structured payloads into the repository-owned
 simulation use cases and queries projections. It must not duplicate domain
 invariants, persistence, event sequencing, or session policy.
 
-Command retries preserve repository idempotency: a duplicate order command
-returns no new event types and leaves the projected account unchanged.
+Command results include `accepted`, `event_types`, and the projected account.
+Domain rejections set `accepted` to `false`; retries preserve repository
+idempotency by returning no new event types and leaving the account unchanged.
 
 ## Current operations
 
