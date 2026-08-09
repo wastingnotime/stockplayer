@@ -34,6 +34,7 @@ invariants, persistence, event sequencing, or session policy.
   order with that identifier.
 - `market_session`: returns the current session state (`scheduled`, `open`,
   `paused`, or `closed`).
+- `market_prices`: returns current symbol prices in integer minor units.
 
 Money and prices are integer minor units. Timestamps are ISO-8601 with an
 explicit offset; the draft adapter rejects naive timestamps at its boundary.

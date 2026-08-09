@@ -136,6 +136,9 @@ class SimulationApiFacade:
     def market_session(self) -> dict[str, str]:
         return {"state": self.environment.session.state.value}
 
+    def market_prices(self) -> dict[str, int]:
+        return dict(self.environment.market.prices)
+
     def order(self, account_id: str, order_id: str) -> dict[str, object] | None:
         view = self.environment.projections.orders.get((account_id, order_id))
         return None if view is None else {"account_id": account_id, "order_id": order_id, **asdict(view)}

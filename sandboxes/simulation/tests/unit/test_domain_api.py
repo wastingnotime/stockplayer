@@ -15,6 +15,10 @@ class SimulationApiFacadeTests(unittest.TestCase):
         facade.open_account({"account_id": "acct-session-api", "display_name": "Session Demo", "cash_minor": 100_000, "occurred_at": "2026-01-05T13:00:00Z"})
         self.assertEqual({"state": "open"}, facade.market_session())
 
+    def test_draft_adapter_exposes_current_market_prices(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500, "BEX": 1_100}))
+        self.assertEqual({"AUR": 2_500, "BEX": 1_100}, facade.market_prices())
+
     def test_draft_adapter_rejects_naive_timestamps_at_boundary(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
         with self.assertRaisesRegex(ValueError, "explicit UTC offset"):
