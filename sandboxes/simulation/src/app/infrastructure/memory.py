@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.domain.model import AccountOpened, CashDeposited, DomainEvent, MarketBuyExecuted
+from app.domain.model import AccountOpened, CashDeposited, DomainEvent, LimitBuyReserved, MarketBuyExecuted
 
 
 class ConcurrencyError(Exception):
@@ -44,6 +44,8 @@ class LedgerEntry:
 class AccountProjections:
     def __init__(self) -> None:
         self.cash_minor: dict[str, int] = {}
+        self.reserved_cash_minor: dict[str, int] = {}
+        self.reservations: dict[tuple[str, str], int] = {}
         self.ledger: dict[str, list[LedgerEntry]] = {}
         self.positions: dict[tuple[str, str], int] = {}
 
@@ -51,6 +53,7 @@ class AccountProjections:
         for event in events:
             if isinstance(event, AccountOpened):
                 self.cash_minor[event.account_id] = 0
+                self.reserved_cash_minor[event.account_id] = 0
                 self.ledger[event.account_id] = []
             elif isinstance(event, CashDeposited):
                 self.cash_minor[event.account_id] += event.amount_minor
@@ -60,3 +63,7 @@ class AccountProjections:
                 self.ledger[event.account_id].append(LedgerEntry("trade_settlement", -event.cost_minor, event.execution_id))
                 key = (event.account_id, event.symbol)
                 self.positions[key] = self.positions.get(key, 0) + event.quantity
+            elif isinstance(event, LimitBuyReserved):
+                self.cash_minor[event.account_id] -= event.reserved_cash_minor
+                self.reserved_cash_minor[event.account_id] += event.reserved_cash_minor
+                self.reservations[(event.account_id, event.order_id)] = event.reserved_cash_minor

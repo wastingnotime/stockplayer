@@ -16,6 +16,8 @@ model boundary until model release.
 - **Execution**: full fill of an accepted order at an exact price.
 - **Cash ledger**: projection of deposits and trade settlement.
 - **Position**: execution-derived quantity and cost projection.
+- **Reservation**: cash held against an accepted limit-buy order until a later
+  execution or release policy is implemented.
 - **Scenario**: seeded initial state, explicit clock, scheduled intentions, and
   monitored invariants.
 
@@ -34,6 +36,8 @@ event, and replaying an event stream reconstructs the same account state.
 2. Insufficient-funds rejection (built).
 3. Limit-buy cash reservation and cancellation.
 4. Market sell and quantity reservation.
+3. Limit-buy cash reservation (built).
+4. Cancellation and reservation release.
 5. Partial execution and average acquisition cost.
 6. Duplicate execution defense and projection rebuild.
 7. Failure/recovery and projection lag.

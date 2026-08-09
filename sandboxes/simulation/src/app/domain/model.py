@@ -48,7 +48,18 @@ class OrderRejected:
     occurred_at: datetime
 
 
-DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | OrderRejected
+@dataclass(frozen=True)
+class LimitBuyReserved:
+    account_id: str
+    order_id: str
+    symbol: str
+    quantity: int
+    limit_price_minor: int
+    reserved_cash_minor: int
+    occurred_at: datetime
+
+
+DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | OrderRejected | LimitBuyReserved
 
 
 class DomainError(Exception):
@@ -59,6 +70,8 @@ class Account:
     def __init__(self) -> None:
         self.account_id: str | None = None
         self.available_cash_minor = 0
+        self.reserved_cash_minor = 0
+        self.reservations: dict[str, int] = {}
         self.positions: dict[str, int] = {}
         self.version = 0
         self._pending: list[DomainEvent] = []
@@ -102,6 +115,23 @@ class Account:
             raise DomainError("rejection requires order, symbol, and reason")
         self._record(OrderRejected(self.account_id or "", order_id, symbol, reason, now))
 
+    def reserve_limit_buy(
+        self, order_id: str, symbol: str, quantity: int,
+        limit_price_minor: int, now: datetime,
+    ) -> None:
+        self._require_open()
+        quantity = positive(quantity, "quantity")
+        limit_price_minor = positive(limit_price_minor, "limit_price_minor")
+        if order_id in self.reservations:
+            raise DomainError("order already exists")
+        reserved = quantity * limit_price_minor
+        if reserved > self.available_cash_minor:
+            raise DomainError("insufficient available cash")
+        self._record(LimitBuyReserved(
+            self.account_id or "", order_id, symbol, quantity,
+            limit_price_minor, reserved, now,
+        ))
+
     def pull_events(self) -> list[DomainEvent]:
         events, self._pending = self._pending, []
         return events
@@ -122,4 +152,8 @@ class Account:
         elif isinstance(event, MarketBuyExecuted):
             self.available_cash_minor -= event.cost_minor
             self.positions[event.symbol] = self.positions.get(event.symbol, 0) + event.quantity
+        elif isinstance(event, LimitBuyReserved):
+            self.available_cash_minor -= event.reserved_cash_minor
+            self.reserved_cash_minor += event.reserved_cash_minor
+            self.reservations[event.order_id] = event.reserved_cash_minor
         self.version += 1

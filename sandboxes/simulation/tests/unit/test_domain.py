@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 
-from app.application.purchase import SubmitMarketBuy
-from app.domain.model import Account, DomainError, OrderRejected
+from app.application.purchase import SubmitLimitBuy, SubmitMarketBuy
+from app.domain.model import Account, DomainError, LimitBuyReserved, OrderRejected
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -50,6 +50,19 @@ class AccountTests(unittest.TestCase):
             account.deposit(10.5, NOW)
         with self.assertRaises(ValueError):
             account.deposit(0, NOW)
+
+    def test_limit_buy_reserves_available_cash_and_rejects_competing_order(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+
+        accepted = environment.limit_buy(SubmitLimitBuy("account-1", "limit-1", "AUR", 20, 2_000, NOW))
+        rejected = environment.limit_buy(SubmitLimitBuy("account-1", "limit-2", "AUR", 31, 2_000, NOW))
+
+        self.assertIsInstance(accepted[0], LimitBuyReserved)
+        self.assertIsInstance(rejected[0], OrderRejected)
+        self.assertEqual(60_000, environment.projections.cash_minor["account-1"])
+        self.assertEqual(40_000, environment.projections.reserved_cash_minor["account-1"])
+        self.assertEqual(40_000, Account.rehydrate(environment.store.load("account-1")).reserved_cash_minor)
 
 
 if __name__ == "__main__":
