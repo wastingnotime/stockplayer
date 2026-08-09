@@ -51,6 +51,17 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual(20_000, result["account"]["reserved_cash_minor"])
         self.assertEqual("accepted", result["account"]["orders"]["limit-api"]["status"])
 
+    def test_draft_adapter_translates_limit_buy_cancellation(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        now = "2026-01-05T13:00:00Z"
+        facade.open_account({"account_id": "acct-cancel-api", "display_name": "Cancel Demo", "cash_minor": 100_000, "occurred_at": now})
+        facade.submit_limit_buy({"account_id": "acct-cancel-api", "order_id": "limit-cancel-api", "symbol": "AUR", "quantity": 10, "limit_price_minor": 2_000, "occurred_at": now})
+        result = facade.cancel_limit_buy({"account_id": "acct-cancel-api", "order_id": "limit-cancel-api", "occurred_at": now})
+        self.assertEqual(["OrderCancelled"], result["event_types"])
+        self.assertEqual(100_000, result["account"]["available_cash_minor"])
+        self.assertEqual(0, result["account"]["reserved_cash_minor"])
+        self.assertEqual("cancelled", result["account"]["orders"]["limit-cancel-api"]["status"])
+
 
 if __name__ == "__main__":
     unittest.main()
