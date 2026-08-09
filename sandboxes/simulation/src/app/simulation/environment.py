@@ -25,6 +25,9 @@ class StockplayerEnvironment:
         self.store.append(account_id, 0, events)
         self.projections.project(events)
 
+    def fail_next_projection(self) -> None:
+        self.projections.inject_failure()
+
     def buy(self, command: SubmitMarketBuy):
         return SubmitMarketBuyHandler(self.store, self.market, self.projections, self.session).handle(command)
 

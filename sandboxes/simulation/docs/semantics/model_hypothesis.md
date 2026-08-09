@@ -50,7 +50,7 @@ event, and replaying an event stream reconstructs the same account state.
 14. Market-session state machine (built).
 15. Session-aware order enforcement (built).
 16. Session observations (built).
-17. Failure/recovery and projection lag.
+17. Projection failure and recovery (built).
 18. Execution-engine comparison.
 19. Released API and browser adapter contracts.
 

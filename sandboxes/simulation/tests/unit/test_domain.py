@@ -7,7 +7,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 
 from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell
 from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, MarketSellExecuted, OrderCancelled, OrderRejected
-from app.infrastructure.memory import AccountProjections
+from app.infrastructure.memory import AccountProjections, ProjectionFailure
 from app.domain.market import DeterministicPriceGenerator, MarketSession, PriceHistory, PriceTick, SessionState
 from app.simulation.environment import StockplayerEnvironment
 
@@ -259,6 +259,22 @@ class AccountTests(unittest.TestCase):
         self.assertEqual("market session is not open", events[0].reason)
         self.assertEqual(100_000, environment.projections.cash_minor["account-1"])
         self.assertEqual(before + events, environment.store.load("account-1"))
+
+    def test_projection_failure_after_append_recovers_from_event_history(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.fail_next_projection()
+
+        with self.assertRaisesRegex(ProjectionFailure, "injected"):
+            environment.buy(SubmitMarketBuy("account-1", "buy-1", "execution-1", "AUR", 10, NOW))
+
+        history = environment.store.load("account-1")
+        self.assertEqual(3, len(history))
+        self.assertEqual(100_000, environment.projections.cash_minor["account-1"])
+        environment.projections.rebuild(history)
+        self.assertEqual(75_000, environment.projections.cash_minor["account-1"])
+        self.assertEqual(10, environment.projections.positions[("account-1", "AUR")])
+        self.assertEqual(2, len(environment.projections.ledger["account-1"]))
 
 
 if __name__ == "__main__":

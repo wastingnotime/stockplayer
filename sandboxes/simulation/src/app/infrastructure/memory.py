@@ -9,6 +9,10 @@ class ConcurrencyError(Exception):
     pass
 
 
+class ProjectionFailure(Exception):
+    pass
+
+
 class InMemoryEventStore:
     def __init__(self) -> None:
         self.streams: dict[str, list[DomainEvent]] = {}
@@ -51,6 +55,10 @@ class AccountProjections:
         self.position_cost_minor: dict[tuple[str, str], int] = {}
         self.realized_result_minor: dict[tuple[str, str], int] = {}
         self.processed_execution_ids: set[str] = set()
+        self._fail_next = False
+
+    def inject_failure(self) -> None:
+        self._fail_next = True
 
     def rebuild(self, events: list[DomainEvent]) -> None:
         """Replace this read model with a projection of the complete stream."""
@@ -65,6 +73,9 @@ class AccountProjections:
         self.project(events)
 
     def project(self, events: list[DomainEvent]) -> None:
+        if self._fail_next:
+            self._fail_next = False
+            raise ProjectionFailure("injected projection failure")
         for event in events:
             if isinstance(event, (MarketBuyExecuted, MarketSellExecuted, LimitBuyExecuted, LimitBuyPartiallyExecuted)):
                 if event.execution_id in self.processed_execution_ids:
