@@ -51,8 +51,9 @@ event, and replaying an event stream reconstructs the same account state.
 15. Session-aware order enforcement (built).
 16. Session observations (built).
 17. Projection failure and recovery (built).
-18. Execution-engine comparison.
-19. Released API and browser adapter contracts.
+18. Runtime failure/recovery evidence (built).
+19. Execution-engine comparison.
+20. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.
