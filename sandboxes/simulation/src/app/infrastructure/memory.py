@@ -48,9 +48,14 @@ class AccountProjections:
         self.reservations: dict[tuple[str, str], int] = {}
         self.ledger: dict[str, list[LedgerEntry]] = {}
         self.positions: dict[tuple[str, str], int] = {}
+        self.processed_execution_ids: set[str] = set()
 
     def project(self, events: list[DomainEvent]) -> None:
         for event in events:
+            if isinstance(event, (MarketBuyExecuted, LimitBuyExecuted, LimitBuyPartiallyExecuted)):
+                if event.execution_id in self.processed_execution_ids:
+                    continue
+                self.processed_execution_ids.add(event.execution_id)
             if isinstance(event, AccountOpened):
                 self.cash_minor[event.account_id] = 0
                 self.reserved_cash_minor[event.account_id] = 0

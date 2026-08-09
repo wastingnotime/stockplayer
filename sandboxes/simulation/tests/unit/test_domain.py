@@ -138,6 +138,22 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(0, account.reserved_cash_minor)
         self.assertEqual(20, account.positions["AUR"])
 
+    def test_duplicate_execution_command_and_projection_are_idempotent(self):
+        environment = StockplayerEnvironment({"AUR": 1_800})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.limit_buy(SubmitLimitBuy("account-1", "limit-1", "AUR", 20, 2_000, NOW))
+        command = ExecutePartialLimitBuy("account-1", "limit-1", "execution-1", 10, 1_800, NOW)
+        first = environment.execute_partial_limit_buy(command)
+        before = Account.rehydrate(environment.store.load("account-1"))
+
+        self.assertEqual([], environment.execute_partial_limit_buy(command))
+        environment.projections.project(first)
+        after = Account.rehydrate(environment.store.load("account-1"))
+        self.assertEqual(before.available_cash_minor, after.available_cash_minor)
+        self.assertEqual(before.reserved_cash_minor, after.reserved_cash_minor)
+        self.assertEqual(before.positions, after.positions)
+        self.assertEqual(2, len(environment.projections.ledger["account-1"]))
+
 
 if __name__ == "__main__":
     unittest.main()

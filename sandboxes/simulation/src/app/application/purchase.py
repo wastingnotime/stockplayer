@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from app.domain.model import Account, DomainError, DomainEvent
+from app.domain.model import Account, DomainError, DomainEvent, DuplicateExecution
 
 
 class EventStore(Protocol):
@@ -45,6 +45,8 @@ class SubmitMarketBuyHandler:
                 command.quantity, self.market.price_minor(command.symbol),
                 command.occurred_at,
             )
+        except DuplicateExecution:
+            return []
         except DomainError as error:
             # A rejected command is an auditable domain fact, but has no
             # economic effect. Provider and programming failures still escape.
@@ -126,7 +128,10 @@ class ExecuteLimitBuyHandler:
     def handle(self, command: ExecuteLimitBuy) -> list[DomainEvent]:
         history = self.store.load(command.account_id)
         account = Account.rehydrate(history)
-        account.execute_limit_buy(command.order_id, command.execution_id, command.price_minor, command.occurred_at)
+        try:
+            account.execute_limit_buy(command.order_id, command.execution_id, command.price_minor, command.occurred_at)
+        except DuplicateExecution:
+            return []
         events = account.pull_events()
         self.store.append(command.account_id, len(history), events)
         self.projections.project(events)
@@ -151,10 +156,13 @@ class ExecutePartialLimitBuyHandler:
     def handle(self, command: ExecutePartialLimitBuy) -> list[DomainEvent]:
         history = self.store.load(command.account_id)
         account = Account.rehydrate(history)
-        account.execute_limit_buy_partially(
-            command.order_id, command.execution_id, command.quantity,
-            command.price_minor, command.occurred_at,
-        )
+        try:
+            account.execute_limit_buy_partially(
+                command.order_id, command.execution_id, command.quantity,
+                command.price_minor, command.occurred_at,
+            )
+        except DuplicateExecution:
+            return []
         events = account.pull_events()
         self.store.append(command.account_id, len(history), events)
         self.projections.project(events)

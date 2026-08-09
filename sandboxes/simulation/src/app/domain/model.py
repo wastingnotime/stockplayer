@@ -110,6 +110,10 @@ class DomainError(Exception):
     pass
 
 
+class DuplicateExecution(DomainError):
+    pass
+
+
 class Account:
     def __init__(self) -> None:
         self.account_id: str | None = None
@@ -117,6 +121,7 @@ class Account:
         self.reserved_cash_minor = 0
         self.reservations: dict[str, int] = {}
         self.reservation_details: dict[str, tuple[str, int, int]] = {}
+        self.execution_ids: set[str] = set()
         self.positions: dict[str, int] = {}
         self.version = 0
         self._pending: list[DomainEvent] = []
@@ -144,6 +149,7 @@ class Account:
         quantity: int, price_minor: int, now: datetime,
     ) -> None:
         self._require_open()
+        self._ensure_new_execution(execution_id)
         quantity = positive(quantity, "quantity")
         price_minor = positive(price_minor, "price_minor")
         cost = quantity * price_minor
@@ -187,6 +193,7 @@ class Account:
 
     def execute_limit_buy(self, order_id: str, execution_id: str, price_minor: int, now: datetime) -> None:
         self._require_open()
+        self._ensure_new_execution(execution_id)
         price_minor = positive(price_minor, "price_minor")
         try:
             symbol, quantity, limit_price = self.reservation_details[order_id]
@@ -206,6 +213,7 @@ class Account:
         price_minor: int, now: datetime,
     ) -> None:
         self._require_open()
+        self._ensure_new_execution(execution_id)
         quantity = positive(quantity, "quantity")
         price_minor = positive(price_minor, "price_minor")
         try:
@@ -233,6 +241,12 @@ class Account:
         if self.account_id is None:
             raise DomainError("account is not open")
 
+    def _ensure_new_execution(self, execution_id: str) -> None:
+        if not execution_id:
+            raise DomainError("execution id is required")
+        if execution_id in self.execution_ids:
+            raise DuplicateExecution(f"execution {execution_id} already applied")
+
     def _record(self, event: DomainEvent) -> None:
         self._apply(event)
         self._pending.append(event)
@@ -243,6 +257,7 @@ class Account:
         elif isinstance(event, CashDeposited):
             self.available_cash_minor += event.amount_minor
         elif isinstance(event, MarketBuyExecuted):
+            self.execution_ids.add(event.execution_id)
             self.available_cash_minor -= event.cost_minor
             self.positions[event.symbol] = self.positions.get(event.symbol, 0) + event.quantity
         elif isinstance(event, LimitBuyReserved):
@@ -256,12 +271,14 @@ class Account:
             del self.reservations[event.order_id]
             del self.reservation_details[event.order_id]
         elif isinstance(event, LimitBuyExecuted):
+            self.execution_ids.add(event.execution_id)
             self.available_cash_minor += event.released_cash_minor
             self.reserved_cash_minor -= event.reserved_cash_minor
             self.positions[event.symbol] = self.positions.get(event.symbol, 0) + event.quantity
             del self.reservations[event.order_id]
             del self.reservation_details[event.order_id]
         elif isinstance(event, LimitBuyPartiallyExecuted):
+            self.execution_ids.add(event.execution_id)
             self.available_cash_minor += event.released_cash_minor
             self.reserved_cash_minor -= event.reserved_cash_minor
             self.positions[event.symbol] = self.positions.get(event.symbol, 0) + event.quantity
