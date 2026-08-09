@@ -248,6 +248,18 @@ class AccountTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cannot transition"):
             session.open(NOW)
 
+    def test_closed_session_rejects_new_buy_without_economic_effect(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.session.close(NOW)
+        before = environment.store.load("account-1")
+
+        events = environment.buy(SubmitMarketBuy("account-1", "buy-closed", "execution-closed", "AUR", 1, NOW))
+        self.assertIsInstance(events[0], OrderRejected)
+        self.assertEqual("market session is not open", events[0].reason)
+        self.assertEqual(100_000, environment.projections.cash_minor["account-1"])
+        self.assertEqual(before + events, environment.store.load("account-1"))
+
 
 if __name__ == "__main__":
     unittest.main()

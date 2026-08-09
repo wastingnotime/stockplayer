@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from app.domain.market import SessionState
 from app.domain.model import Account, DomainError, DomainEvent, DuplicateExecution
 
 
@@ -20,6 +21,15 @@ class ProjectionSink(Protocol):
     def project(self, events: list[DomainEvent]) -> None: ...
 
 
+class SessionGate(Protocol):
+    state: SessionState
+
+
+def require_open_session(session: SessionGate | None) -> None:
+    if session is not None and session.state != SessionState.OPEN:
+        raise DomainError("market session is not open")
+
+
 @dataclass(frozen=True)
 class SubmitMarketBuy:
     account_id: str
@@ -31,15 +41,17 @@ class SubmitMarketBuy:
 
 
 class SubmitMarketBuyHandler:
-    def __init__(self, store: EventStore, market: MarketData, projections: ProjectionSink) -> None:
+    def __init__(self, store: EventStore, market: MarketData, projections: ProjectionSink, session: SessionGate | None = None) -> None:
         self.store = store
         self.market = market
         self.projections = projections
+        self.session = session
 
     def handle(self, command: SubmitMarketBuy) -> list[DomainEvent]:
         history = self.store.load(command.account_id)
         account = Account.rehydrate(history)
         try:
+            require_open_session(self.session)
             account.execute_market_buy(
                 command.order_id, command.execution_id, command.symbol,
                 command.quantity, self.market.price_minor(command.symbol),
@@ -69,14 +81,16 @@ class SubmitMarketSell:
 
 
 class SubmitMarketSellHandler:
-    def __init__(self, store: EventStore, projections: ProjectionSink) -> None:
+    def __init__(self, store: EventStore, projections: ProjectionSink, session: SessionGate | None = None) -> None:
         self.store = store
         self.projections = projections
+        self.session = session
 
     def handle(self, command: SubmitMarketSell) -> list[DomainEvent]:
         history = self.store.load(command.account_id)
         account = Account.rehydrate(history)
         try:
+            require_open_session(self.session)
             account.execute_market_sell(
                 command.order_id, command.execution_id, command.symbol,
                 command.quantity, command.price_minor, command.occurred_at,
@@ -102,14 +116,16 @@ class SubmitLimitBuy:
 
 
 class SubmitLimitBuyHandler:
-    def __init__(self, store: EventStore, projections: ProjectionSink) -> None:
+    def __init__(self, store: EventStore, projections: ProjectionSink, session: SessionGate | None = None) -> None:
         self.store = store
         self.projections = projections
+        self.session = session
 
     def handle(self, command: SubmitLimitBuy) -> list[DomainEvent]:
         history = self.store.load(command.account_id)
         account = Account.rehydrate(history)
         try:
+            require_open_session(self.session)
             account.reserve_limit_buy(
                 command.order_id, command.symbol, command.quantity,
                 command.limit_price_minor, command.occurred_at,
@@ -154,15 +170,17 @@ class ExecuteLimitBuy:
 
 
 class ExecuteLimitBuyHandler:
-    def __init__(self, store: EventStore, market: MarketData, projections: ProjectionSink) -> None:
+    def __init__(self, store: EventStore, market: MarketData, projections: ProjectionSink, session: SessionGate | None = None) -> None:
         self.store = store
         self.market = market
         self.projections = projections
+        self.session = session
 
     def handle(self, command: ExecuteLimitBuy) -> list[DomainEvent]:
         history = self.store.load(command.account_id)
         account = Account.rehydrate(history)
         try:
+            require_open_session(self.session)
             account.execute_limit_buy(command.order_id, command.execution_id, command.price_minor, command.occurred_at)
         except DuplicateExecution:
             return []
@@ -183,14 +201,16 @@ class ExecutePartialLimitBuy:
 
 
 class ExecutePartialLimitBuyHandler:
-    def __init__(self, store: EventStore, projections: ProjectionSink) -> None:
+    def __init__(self, store: EventStore, projections: ProjectionSink, session: SessionGate | None = None) -> None:
         self.store = store
         self.projections = projections
+        self.session = session
 
     def handle(self, command: ExecutePartialLimitBuy) -> list[DomainEvent]:
         history = self.store.load(command.account_id)
         account = Account.rehydrate(history)
         try:
+            require_open_session(self.session)
             account.execute_limit_buy_partially(
                 command.order_id, command.execution_id, command.quantity,
                 command.price_minor, command.occurred_at,
