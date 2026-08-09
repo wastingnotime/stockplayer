@@ -23,6 +23,7 @@ class SimplePurchaseScenarioTests(unittest.TestCase):
         self.assertIn('"name": "market_session_closed"', first)
         self.assertIn('"name": "projection_failed_after_append"', first)
         self.assertIn('"name": "projection_rebuilt"', first)
+        self.assertIn('"name": "execution_engines_compared"', first)
         self.assertNotIn('"passed": false', first)
 
 

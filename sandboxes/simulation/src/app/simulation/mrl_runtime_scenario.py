@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from app.application.purchase import SubmitMarketBuy
+from app.domain.engines import FullFillEngineV1, LiquidityCappedEngineV2, ExecutionRequest, compare_engines
 from app.domain.market import DeterministicPriceGenerator, PriceHistory
 from app.infrastructure.memory import ProjectionFailure
 from app.simulation.environment import StockplayerEnvironment
@@ -47,6 +48,11 @@ def create_simulation() -> Scenario:
             environment.projections.rebuild(history)
             context.emit("recovery", "projection_rebuilt", source="Stockplayer", actor="projection-worker", correlation_id="recovery-001", payload={"cash_minor": environment.projections.cash_minor["acct-demo"], "position_quantity": environment.projections.positions[("acct-demo", "AUR")]})
 
+    def compare_execution_engines(context) -> None:
+        request = ExecutionRequest("candidate-order", "AUR", 10, environment.market.price_minor("AUR"), 4)
+        decisions = compare_engines(request, (FullFillEngineV1(), LiquidityCappedEngineV2()))
+        context.emit("engine_comparison", "execution_engines_compared", source="Stockplayer", actor="engine-lab", correlation_id="engine-001", payload={"request_quantity": request.quantity, "liquidity": request.available_liquidity, "decisions": [{"engine_version": decision.engine_version, "filled_quantity": decision.filled_quantity, "reason": decision.reason} for decision in decisions]})
+
     def close_market(context) -> None:
         environment.session.close(context.clock.now())
         context.emit("market_state", "market_session_closed", source="Stockplayer", actor="market-simulator", correlation_id="session-002", payload={"state": environment.session.state.value})
@@ -60,6 +66,7 @@ def create_simulation() -> Scenario:
             InitialScheduledAction(INITIAL_TIME + timedelta(seconds=1), purchase, "submit_market_buy", "DemoUser", "order-001"),
             InitialScheduledAction(INITIAL_TIME + timedelta(seconds=2), advance_market, "advance_market_price", "SeededMarket", "price-001"),
             InitialScheduledAction(INITIAL_TIME + timedelta(milliseconds=2500), fail_and_recover_projection, "fail_and_recover_projection", "Stockplayer", "recovery-001"),
+            InitialScheduledAction(INITIAL_TIME + timedelta(milliseconds=2750), compare_execution_engines, "compare_execution_engines", "Stockplayer", "engine-001"),
             InitialScheduledAction(INITIAL_TIME + timedelta(seconds=3), close_market, "close_market_session", "Stockplayer", "session-002"),
         ],
         invariants=[

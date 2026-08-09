@@ -53,7 +53,8 @@ event, and replaying an event stream reconstructs the same account state.
 17. Projection failure and recovery (built).
 18. Runtime failure/recovery evidence (built).
 19. Execution-engine comparison (built).
-20. Released API and browser adapter contracts.
+20. Runtime engine comparison evidence (built).
+21. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.
