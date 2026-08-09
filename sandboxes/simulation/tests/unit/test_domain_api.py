@@ -18,6 +18,12 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual(["MarketBuyExecuted"], result["event_types"])
         self.assertEqual(75_000, result["account"]["available_cash_minor"])
         self.assertEqual("filled", result["account"]["orders"]["order-api"]["status"])
+        self.assertEqual(
+            {"account_id": "acct-api", "order_id": "order-api", "side": "buy", "symbol": "AUR",
+             "requested_quantity": 10, "remaining_quantity": 0, "status": "filled"},
+            facade.order("acct-api", "order-api"),
+        )
+        self.assertIsNone(facade.order("acct-api", "missing"))
 
     def test_draft_adapter_translates_market_sell(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))

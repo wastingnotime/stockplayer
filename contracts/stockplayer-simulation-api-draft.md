@@ -14,6 +14,8 @@ invariants, persistence, event sequencing, or session policy.
 - `submit_market_sell`: `account_id`, `order_id`, `execution_id`, `symbol`,
   `quantity`, `price_minor`, `occurred_at`.
 - `account`: returns available/reserved cash, positions, and order views.
+- `order`: returns one projected order view, or `null` when the account has no
+  order with that identifier.
 
 Money and prices are integer minor units. Timestamps are ISO-8601 with an
 explicit offset. Domain rejection remains represented by domain events and

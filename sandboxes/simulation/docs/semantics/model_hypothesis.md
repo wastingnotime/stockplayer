@@ -65,7 +65,8 @@ event, and replaying an event stream reconstructs the same account state.
 29. Order-command idempotency (built).
 30. Draft API adapter (built; unreleased).
 31. Draft API sell adapter (built; unreleased).
-32. Released API and browser adapter contracts.
+32. Draft API order query (built; unreleased).
+33. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.
