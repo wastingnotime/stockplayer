@@ -41,6 +41,12 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual({"AUR": 6}, result["account"]["positions"])
         self.assertEqual("filled", result["account"]["orders"]["sell-api"]["status"])
 
+        self.assertEqual(
+            {"quantity": 6, "average_cost_minor": 2_500, "cost_basis_minor": 15_000,
+             "realized_result_minor": 2_000, "unrealized_result_minor": 0},
+            result["account"]["valuation"]["AUR"],
+        )
+
     def test_draft_adapter_translates_market_sell_reservation(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
         now = "2026-01-05T13:00:00Z"

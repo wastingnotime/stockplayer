@@ -112,12 +112,24 @@ class SimulationApiFacade:
         positions = {symbol: quantity for (owner, symbol), quantity in projection.positions.items() if owner == account_id}
         orders = {order_id: asdict(view) for (owner, order_id), view in projection.orders.items() if owner == account_id}
         reserved_quantities = {order_id: quantity for (owner, order_id), quantity in projection.reserved_quantities.items() if owner == account_id}
+        valuation = {}
+        for (owner, symbol), quantity in projection.positions.items():
+            if owner != account_id:
+                continue
+            valuation[symbol] = {
+                "quantity": quantity,
+                "average_cost_minor": projection.average_cost_minor(account_id, symbol),
+                "cost_basis_minor": projection.position_cost_minor.get((account_id, symbol), 0),
+                "realized_result_minor": projection.realized_result_minor.get((account_id, symbol), 0),
+                "unrealized_result_minor": projection.unrealized_result_minor(account_id, symbol, self.environment.market.price_minor(symbol)),
+            }
         return {
             "account_id": account_id,
             "available_cash_minor": projection.cash_minor.get(account_id, 0),
             "reserved_cash_minor": projection.reserved_cash_minor.get(account_id, 0),
             "positions": positions,
             "reserved_quantities": reserved_quantities,
+            "valuation": valuation,
             "orders": orders,
         }
 
