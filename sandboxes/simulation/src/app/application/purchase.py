@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from app.domain.model import Account, DomainEvent
+from app.domain.model import Account, DomainError, DomainEvent
 
 
 class EventStore(Protocol):
@@ -39,11 +39,16 @@ class SubmitMarketBuyHandler:
     def handle(self, command: SubmitMarketBuy) -> list[DomainEvent]:
         history = self.store.load(command.account_id)
         account = Account.rehydrate(history)
-        account.execute_market_buy(
-            command.order_id, command.execution_id, command.symbol,
-            command.quantity, self.market.price_minor(command.symbol),
-            command.occurred_at,
-        )
+        try:
+            account.execute_market_buy(
+                command.order_id, command.execution_id, command.symbol,
+                command.quantity, self.market.price_minor(command.symbol),
+                command.occurred_at,
+            )
+        except DomainError as error:
+            # A rejected command is an auditable domain fact, but has no
+            # economic effect. Provider and programming failures still escape.
+            account.reject_order(command.order_id, command.symbol, str(error), command.occurred_at)
         events = account.pull_events()
         self.store.append(command.account_id, len(history), events)
         self.projections.project(events)

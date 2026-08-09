@@ -12,7 +12,7 @@ model boundary until model release.
 - **Account**: event-sourced authority for fictional cash and purchased units.
 - **Security**: fictional instrument with a symbol and current valid price.
 - **Order**: instruction whose lifecycle is submitted, accepted, filled, or
-  rejected in the first slice.
+  rejected; rejection is now an explicit event fact.
 - **Execution**: full fill of an accepted order at an exact price.
 - **Cash ledger**: projection of deposits and trade settlement.
 - **Position**: execution-derived quantity and cost projection.
@@ -24,13 +24,14 @@ model boundary until model release.
 Cash is integer minor units and quantity is a positive integer. A market buy
 requires a positive current price and sufficient available cash. Acceptance and
 execution are atomic in the first engine; fees and reservations are zero/not
-needed for immediate full fills. Every balance change is explained by an event,
-and replaying an event stream reconstructs the same account state.
+needed for immediate full fills. Insufficient cash produces `OrderRejected`
+without changing economic projections. Every balance change is explained by an
+event, and replaying an event stream reconstructs the same account state.
 
 ## Candidate slice map
 
-1. Simple deterministic market purchase (selected and built).
-2. Insufficient-funds rejection.
+1. Simple deterministic market purchase (built).
+2. Insufficient-funds rejection (built).
 3. Limit-buy cash reservation and cancellation.
 4. Market sell and quantity reservation.
 5. Partial execution and average acquisition cost.

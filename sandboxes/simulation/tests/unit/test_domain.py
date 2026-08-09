@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 
 from app.application.purchase import SubmitMarketBuy
-from app.domain.model import Account, DomainError
+from app.domain.model import Account, DomainError, OrderRejected
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -32,11 +32,16 @@ class AccountTests(unittest.TestCase):
         environment.open_funded_account("account-1", "Ada", 1_000, NOW)
         before = environment.store.load("account-1")
 
-        with self.assertRaisesRegex(DomainError, "insufficient"):
-            environment.buy(SubmitMarketBuy("account-1", "order-1", "execution-1", "AUR", 10, NOW))
+        events = environment.buy(SubmitMarketBuy("account-1", "order-1", "execution-1", "AUR", 10, NOW))
 
-        self.assertEqual(before, environment.store.load("account-1"))
+        self.assertEqual(1, len(events))
+        self.assertIsInstance(events[0], OrderRejected)
+        self.assertEqual("insufficient available cash", events[0].reason)
+        self.assertEqual(before + events, environment.store.load("account-1"))
         self.assertEqual(1_000, environment.projections.cash_minor["account-1"])
+        replayed = Account.rehydrate(environment.store.load("account-1"))
+        self.assertEqual(1_000, replayed.available_cash_minor)
+        self.assertEqual({}, replayed.positions)
 
     def test_binary_floats_and_non_positive_values_are_rejected(self):
         account = Account()

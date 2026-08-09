@@ -39,7 +39,16 @@ class MarketBuyExecuted:
         return self.quantity * self.price_minor
 
 
-DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted
+@dataclass(frozen=True)
+class OrderRejected:
+    account_id: str
+    order_id: str
+    symbol: str
+    reason: str
+    occurred_at: datetime
+
+
+DomainEvent = AccountOpened | CashDeposited | MarketBuyExecuted | OrderRejected
 
 
 class DomainError(Exception):
@@ -86,6 +95,12 @@ class Account:
             self.account_id or "", order_id, execution_id, symbol,
             quantity, price_minor, now,
         ))
+
+    def reject_order(self, order_id: str, symbol: str, reason: str, now: datetime) -> None:
+        self._require_open()
+        if not order_id or not symbol or not reason:
+            raise DomainError("rejection requires order, symbol, and reason")
+        self._record(OrderRejected(self.account_id or "", order_id, symbol, reason, now))
 
     def pull_events(self) -> list[DomainEvent]:
         events, self._pending = self._pending, []
