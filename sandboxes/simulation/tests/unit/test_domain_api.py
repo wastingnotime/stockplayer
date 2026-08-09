@@ -76,6 +76,19 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual({}, result["account"]["reserved_quantities"])
         self.assertEqual("filled", result["account"]["orders"]["sell-execute-api"]["status"])
 
+    def test_draft_adapter_translates_partial_market_sell_reservation_execution(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        now = "2026-01-05T13:00:00Z"
+        facade.open_account({"account_id": "acct-partial-sell-api", "display_name": "Partial Sell Demo", "cash_minor": 100_000, "occurred_at": now})
+        facade.submit_market_buy({"account_id": "acct-partial-sell-api", "order_id": "buy-partial-sell", "execution_id": "buy-partial-execution", "symbol": "AUR", "quantity": 10, "occurred_at": now})
+        facade.reserve_market_sell({"account_id": "acct-partial-sell-api", "order_id": "sell-partial-api", "symbol": "AUR", "quantity": 4, "occurred_at": now})
+        result = facade.execute_partial_market_sell_reservation({"account_id": "acct-partial-sell-api", "order_id": "sell-partial-api", "execution_id": "sell-partial-execution", "quantity": 2, "price_minor": 3_000, "occurred_at": now})
+        self.assertEqual(["SellReservationPartiallyExecuted"], result["event_types"])
+        self.assertEqual(81_000, result["account"]["available_cash_minor"])
+        self.assertEqual({"AUR": 8}, result["account"]["positions"])
+        self.assertEqual({"sell-partial-api": 2}, result["account"]["reserved_quantities"])
+        self.assertEqual("partially_filled", result["account"]["orders"]["sell-partial-api"]["status"])
+
     def test_draft_adapter_translates_limit_buy_reservation(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
         now = "2026-01-05T13:00:00Z"
