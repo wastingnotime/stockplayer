@@ -41,6 +41,16 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual({"AUR": 6}, result["account"]["positions"])
         self.assertEqual("filled", result["account"]["orders"]["sell-api"]["status"])
 
+    def test_draft_adapter_translates_limit_buy_reservation(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        now = "2026-01-05T13:00:00Z"
+        facade.open_account({"account_id": "acct-limit-api", "display_name": "Limit Demo", "cash_minor": 100_000, "occurred_at": now})
+        result = facade.submit_limit_buy({"account_id": "acct-limit-api", "order_id": "limit-api", "symbol": "AUR", "quantity": 10, "limit_price_minor": 2_000, "occurred_at": now})
+        self.assertEqual(["LimitBuyReserved"], result["event_types"])
+        self.assertEqual(80_000, result["account"]["available_cash_minor"])
+        self.assertEqual(20_000, result["account"]["reserved_cash_minor"])
+        self.assertEqual("accepted", result["account"]["orders"]["limit-api"]["status"])
+
 
 if __name__ == "__main__":
     unittest.main()

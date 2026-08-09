@@ -67,7 +67,8 @@ event, and replaying an event stream reconstructs the same account state.
 31. Draft API sell adapter (built; unreleased).
 32. Draft API order query (built; unreleased).
 33. Draft API timestamp boundary (built; unreleased).
-34. Released API and browser adapter contracts.
+34. Draft API limit-buy adapter (built; unreleased).
+35. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.
