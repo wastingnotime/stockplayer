@@ -73,7 +73,8 @@ event, and replaying an event stream reconstructs the same account state.
 37. Draft API partial limit-buy execution (built; unreleased).
 38. Draft API sell reservation (built; unreleased).
 39. Draft API sell-reservation cancellation (built; unreleased).
-40. Released API and browser adapter contracts.
+40. Draft API sell-reservation execution (built; unreleased).
+41. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.

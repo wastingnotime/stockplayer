@@ -63,6 +63,19 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertEqual({}, result["account"]["reserved_quantities"])
         self.assertEqual("cancelled", result["account"]["orders"]["sell-cancel-api"]["status"])
 
+    def test_draft_adapter_translates_market_sell_reservation_execution(self):
+        facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
+        now = "2026-01-05T13:00:00Z"
+        facade.open_account({"account_id": "acct-execute-sell-api", "display_name": "Execute Sell Demo", "cash_minor": 100_000, "occurred_at": now})
+        facade.submit_market_buy({"account_id": "acct-execute-sell-api", "order_id": "buy-execute-sell", "execution_id": "buy-execute-execution", "symbol": "AUR", "quantity": 10, "occurred_at": now})
+        facade.reserve_market_sell({"account_id": "acct-execute-sell-api", "order_id": "sell-execute-api", "symbol": "AUR", "quantity": 4, "occurred_at": now})
+        result = facade.execute_market_sell_reservation({"account_id": "acct-execute-sell-api", "order_id": "sell-execute-api", "execution_id": "sell-execute-execution", "price_minor": 3_000, "occurred_at": now})
+        self.assertEqual(["SellReservationExecuted"], result["event_types"])
+        self.assertEqual(87_000, result["account"]["available_cash_minor"])
+        self.assertEqual({"AUR": 6}, result["account"]["positions"])
+        self.assertEqual({}, result["account"]["reserved_quantities"])
+        self.assertEqual("filled", result["account"]["orders"]["sell-execute-api"]["status"])
+
     def test_draft_adapter_translates_limit_buy_reservation(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
         now = "2026-01-05T13:00:00Z"

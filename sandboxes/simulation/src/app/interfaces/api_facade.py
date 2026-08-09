@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import datetime
 
-from app.application.purchase import CancelLimitBuy, CancelMarketSellReservation, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell, SubmitMarketSellReservation
+from app.application.purchase import CancelLimitBuy, CancelMarketSellReservation, ExecuteLimitBuy, ExecuteMarketSellReservation, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy, SubmitMarketSell, SubmitMarketSellReservation
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -56,6 +56,14 @@ class SimulationApiFacade:
         account_id = str(payload["account_id"])
         events = self.environment.cancel_sell_reservation(CancelMarketSellReservation(
             account_id, str(payload["order_id"]), _time(str(payload["occurred_at"])),
+        ))
+        return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
+
+    def execute_market_sell_reservation(self, payload: dict[str, object]) -> dict[str, object]:
+        account_id = str(payload["account_id"])
+        events = self.environment.execute_sell_reservation(ExecuteMarketSellReservation(
+            account_id, str(payload["order_id"]), str(payload["execution_id"]),
+            int(payload["price_minor"]), _time(str(payload["occurred_at"])),
         ))
         return {"event_types": [type(event).__name__ for event in events], "account": self.account(account_id)}
 
