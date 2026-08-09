@@ -19,6 +19,8 @@ class SimplePurchaseScenarioTests(unittest.TestCase):
         self.assertIn('"cash_minor": 75000', first)
         self.assertIn('"name": "price_tick"', first)
         self.assertIn('"name": "unrealized_result_updated"', first)
+        self.assertIn('"name": "market_session_opened"', first)
+        self.assertIn('"name": "market_session_closed"', first)
         self.assertNotIn('"passed": false', first)
 
 

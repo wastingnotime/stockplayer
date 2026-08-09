@@ -49,9 +49,10 @@ event, and replaying an event stream reconstructs the same account state.
 13. Scenario price advancement and valuation observations (built).
 14. Market-session state machine (built).
 15. Session-aware order enforcement (built).
-16. Failure/recovery and projection lag.
-17. Execution-engine comparison.
-18. Released API and browser adapter contracts.
+16. Session observations (built).
+17. Failure/recovery and projection lag.
+18. Execution-engine comparison.
+19. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.

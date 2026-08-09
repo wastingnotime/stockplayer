@@ -21,6 +21,7 @@ def create_simulation() -> Scenario:
         environment.open_funded_account("acct-demo", "Demo Architect", 100_000, context.clock.now())
         context.environment = environment
         context.emit("domain_events", "account_opened_and_funded", source="Stockplayer", actor="demo-user", correlation_id="setup-001", payload={"account_id": "acct-demo", "cash_minor": 100_000})
+        context.emit("market_state", "market_session_opened", source="Stockplayer", actor="market-simulator", correlation_id="session-001", payload={"state": environment.session.state.value})
 
     def purchase(context) -> None:
         events = environment.buy(SubmitMarketBuy("acct-demo", "order-001", "execution-001", "AUR", 10, context.clock.now()))
@@ -35,6 +36,10 @@ def create_simulation() -> Scenario:
         context.emit("market_fact", "price_tick", source="SeededMarket", actor="market-simulator", correlation_id="price-001", payload={"symbol": tick.symbol, "price_minor": tick.price_minor, "sequence": tick.sequence, "source_seed": tick.source_seed})
         context.emit("projection", "unrealized_result_updated", source="Stockplayer", actor="market-simulator", correlation_id="price-001", payload={"symbol": "AUR", "unrealized_result_minor": unrealized})
 
+    def close_market(context) -> None:
+        environment.session.close(context.clock.now())
+        context.emit("market_state", "market_session_closed", source="Stockplayer", actor="market-simulator", correlation_id="session-002", payload={"state": environment.session.state.value})
+
     return Scenario(
         name="stockplayer-simple-purchase", seed=20260105,
         initial_time=INITIAL_TIME, run_id="simple-purchase-20260105",
@@ -43,6 +48,7 @@ def create_simulation() -> Scenario:
             InitialScheduledAction(INITIAL_TIME, fund_account, "fund_account", "Stockplayer", "setup-001"),
             InitialScheduledAction(INITIAL_TIME + timedelta(seconds=1), purchase, "submit_market_buy", "DemoUser", "order-001"),
             InitialScheduledAction(INITIAL_TIME + timedelta(seconds=2), advance_market, "advance_market_price", "SeededMarket", "price-001"),
+            InitialScheduledAction(INITIAL_TIME + timedelta(seconds=3), close_market, "close_market_session", "Stockplayer", "session-002"),
         ],
         invariants=[
             Invariant("cash never negative", lambda context: not hasattr(context, "environment") or all(value >= 0 for value in context.environment.projections.cash_minor.values())),
