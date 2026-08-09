@@ -50,6 +50,16 @@ class AccountProjections:
         self.positions: dict[tuple[str, str], int] = {}
         self.processed_execution_ids: set[str] = set()
 
+    def rebuild(self, events: list[DomainEvent]) -> None:
+        """Replace this read model with a projection of the complete stream."""
+        self.cash_minor.clear()
+        self.reserved_cash_minor.clear()
+        self.reservations.clear()
+        self.ledger.clear()
+        self.positions.clear()
+        self.processed_execution_ids.clear()
+        self.project(events)
+
     def project(self, events: list[DomainEvent]) -> None:
         for event in events:
             if isinstance(event, (MarketBuyExecuted, LimitBuyExecuted, LimitBuyPartiallyExecuted)):

@@ -7,6 +7,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 
 from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy
 from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, OrderCancelled, OrderRejected
+from app.infrastructure.memory import AccountProjections
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -153,6 +154,22 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(before.reserved_cash_minor, after.reserved_cash_minor)
         self.assertEqual(before.positions, after.positions)
         self.assertEqual(2, len(environment.projections.ledger["account-1"]))
+
+    def test_projection_rebuild_matches_incremental_projection(self):
+        environment = StockplayerEnvironment({"AUR": 1_800})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.limit_buy(SubmitLimitBuy("account-1", "limit-1", "AUR", 20, 2_000, NOW))
+        environment.execute_partial_limit_buy(
+            ExecutePartialLimitBuy("account-1", "limit-1", "execution-1", 10, 1_800, NOW)
+        )
+
+        rebuilt = AccountProjections()
+        rebuilt.rebuild(environment.store.load("account-1"))
+        self.assertEqual(environment.projections.cash_minor, rebuilt.cash_minor)
+        self.assertEqual(environment.projections.reserved_cash_minor, rebuilt.reserved_cash_minor)
+        self.assertEqual(environment.projections.reservations, rebuilt.reservations)
+        self.assertEqual(environment.projections.ledger, rebuilt.ledger)
+        self.assertEqual(environment.projections.positions, rebuilt.positions)
 
 
 if __name__ == "__main__":
