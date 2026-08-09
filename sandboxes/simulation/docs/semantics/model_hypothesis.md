@@ -39,7 +39,7 @@ event, and replaying an event stream reconstructs the same account state.
 3. Limit-buy cash reservation (built).
 4. Cancellation and reservation release (built).
 5. Reserved execution and settlement (built).
-6. Partial execution and average acquisition cost.
+6. Partial execution and remaining reservation (built).
 7. Duplicate execution defense and projection rebuild.
 8. Failure/recovery and projection lag.
 9. Execution-engine comparison.

@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "src"))
 
-from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, SubmitLimitBuy, SubmitMarketBuy
-from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyReserved, OrderCancelled, OrderRejected
+from app.application.purchase import CancelLimitBuy, ExecuteLimitBuy, ExecutePartialLimitBuy, SubmitLimitBuy, SubmitMarketBuy
+from app.domain.model import Account, DomainError, LimitBuyExecuted, LimitBuyPartiallyExecuted, LimitBuyReserved, OrderCancelled, OrderRejected
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -114,6 +114,29 @@ class AccountTests(unittest.TestCase):
 
         account = Account.rehydrate(environment.store.load("account-1"))
         self.assertEqual(40_000, account.reserved_cash_minor)
+
+    def test_partial_execution_preserves_remaining_quantity_and_hold(self):
+        environment = StockplayerEnvironment({"AUR": 1_800})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        environment.limit_buy(SubmitLimitBuy("account-1", "limit-1", "AUR", 20, 2_000, NOW))
+
+        events = environment.execute_partial_limit_buy(
+            ExecutePartialLimitBuy("account-1", "limit-1", "execution-1", 10, 1_800, NOW)
+        )
+        self.assertIsInstance(events[0], LimitBuyPartiallyExecuted)
+        account = Account.rehydrate(environment.store.load("account-1"))
+        self.assertEqual(62_000, account.available_cash_minor)
+        self.assertEqual(20_000, account.reserved_cash_minor)
+        self.assertEqual(10, account.reservation_details["limit-1"][1])
+        self.assertEqual(10, account.positions["AUR"])
+
+        environment.execute_limit_buy(
+            ExecuteLimitBuy("account-1", "limit-1", "execution-2", 1_700, NOW)
+        )
+        account = Account.rehydrate(environment.store.load("account-1"))
+        self.assertEqual(65_000, account.available_cash_minor)
+        self.assertEqual(0, account.reserved_cash_minor)
+        self.assertEqual(20, account.positions["AUR"])
 
 
 if __name__ == "__main__":
