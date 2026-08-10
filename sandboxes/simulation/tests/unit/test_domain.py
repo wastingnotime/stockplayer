@@ -360,6 +360,19 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(["v1-full-fill", "v2-liquidity-capped"], payload["engine_versions"])
         self.assertEqual(4, payload["fill_delta"])
 
+    def test_environment_comparison_does_not_mutate_account_state(self):
+        environment = StockplayerEnvironment({"AUR": 2_500})
+        environment.open_funded_account("account-1", "Ada", 100_000, NOW)
+        before_events = environment.store.load("account-1")
+        before_cash = dict(environment.projections.cash_minor)
+        decisions = environment.compare_execution(
+            ExecutionRequest("candidate", "AUR", 10, 2_500, 4),
+            (FullFillEngineV1(), LiquidityCappedEngineV2()),
+        )
+        self.assertEqual((0, 4), tuple(decision.filled_quantity for decision in decisions))
+        self.assertEqual(before_events, environment.store.load("account-1"))
+        self.assertEqual(before_cash, environment.projections.cash_minor)
+
     def test_execution_decision_rejects_invalid_values(self):
         with self.assertRaises(ValueError):
             ExecutionDecision("v1", "order-1", -1, 2_500, "invalid")
