@@ -48,6 +48,8 @@ idempotency by returning no new event types and leaving the account unchanged.
 
 Money and prices are integer minor units. Timestamps are ISO-8601 with an
 explicit offset; the draft adapter rejects naive timestamps at its boundary.
+Malformed timestamp text is reported as an adapter `ValueError` with an
+ISO-8601 validation message.
 Domain rejection remains represented by domain events and adapter errors until
 a released transport contract is selected.
 

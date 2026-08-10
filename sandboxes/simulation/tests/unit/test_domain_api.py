@@ -34,6 +34,8 @@ class SimulationApiFacadeTests(unittest.TestCase):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
         with self.assertRaisesRegex(ValueError, "explicit UTC offset"):
             facade.open_account({"account_id": "acct-naive", "display_name": "Naive", "cash_minor": 100_000, "occurred_at": "2026-01-05T13:00:00"})
+        with self.assertRaisesRegex(ValueError, "valid ISO-8601"):
+            facade.open_account({"account_id": "acct-invalid", "display_name": "Invalid", "cash_minor": 100_000, "occurred_at": "not-a-time"})
 
     def test_draft_adapter_translates_command_and_query_without_domain_duplication(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))

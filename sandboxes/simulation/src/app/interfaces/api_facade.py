@@ -8,7 +8,10 @@ from app.simulation.environment import StockplayerEnvironment
 
 
 def _time(value: str) -> datetime:
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError("occurred_at must be a valid ISO-8601 timestamp") from error
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError("occurred_at must include an explicit UTC offset")
     return parsed
