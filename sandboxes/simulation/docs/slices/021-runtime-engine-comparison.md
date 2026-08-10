@@ -24,6 +24,8 @@ then closes the market.
   machine-checkable without reconstructing decisions from prose.
 - Candidate comparison runs after recovery and before session close.
 - Account state remains authoritative and unchanged by comparison.
+- The shared simulation environment owns comparison orchestration; the runtime
+  adapter only schedules the action and emits its validated payload.
 
 Out of scope: promotion, engine selection, production benchmarking, and order
 book implementation. The comparison remains observational and does not settle
