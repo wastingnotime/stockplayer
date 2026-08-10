@@ -15,7 +15,11 @@ class ExecutionRequest:
     def __post_init__(self) -> None:
         if not self.order_id or not self.symbol:
             raise ValueError("order and symbol are required")
-        if self.quantity <= 0 or self.price_minor <= 0 or self.available_liquidity < 0:
+        if (
+            isinstance(self.quantity, bool) or not isinstance(self.quantity, int) or self.quantity <= 0
+            or isinstance(self.price_minor, bool) or not isinstance(self.price_minor, int) or self.price_minor <= 0
+            or isinstance(self.available_liquidity, bool) or not isinstance(self.available_liquidity, int) or self.available_liquidity < 0
+        ):
             raise ValueError("quantity and price must be positive; liquidity cannot be negative")
 
 

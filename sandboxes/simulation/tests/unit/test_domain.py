@@ -357,6 +357,19 @@ class AccountTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ExecutionDecision("v1", "order-1", -1, 2_500, "invalid")
 
+    def test_execution_request_rejects_boolean_numeric_values(self):
+        with self.assertRaises(ValueError):
+            ExecutionRequest("order-1", "AUR", True, 2_500, 1)
+        with self.assertRaises(ValueError):
+            ExecutionRequest("order-1", "AUR", 1, 2_500, False)
+
+    def test_liquidity_capped_engine_handles_zero_and_full_liquidity(self):
+        engine = LiquidityCappedEngineV2()
+        no_liquidity = engine.decide(ExecutionRequest("order-1", "AUR", 2, 2_500, 0))
+        full_liquidity = engine.decide(ExecutionRequest("order-2", "AUR", 2, 2_500, 2))
+        self.assertEqual((0, "no liquidity"), (no_liquidity.filled_quantity, no_liquidity.reason))
+        self.assertEqual((2, "full fill"), (full_liquidity.filled_quantity, full_liquidity.reason))
+
     def test_closed_session_rejects_new_buy_without_economic_effect(self):
         environment = StockplayerEnvironment({"AUR": 2_500})
         environment.open_funded_account("account-1", "Ada", 100_000, NOW)
