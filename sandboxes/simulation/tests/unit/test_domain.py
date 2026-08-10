@@ -346,6 +346,13 @@ class AccountTests(unittest.TestCase):
         self.assertEqual((0, 4), tuple(decision.filled_quantity for decision in first))
         self.assertEqual(("insufficient liquidity for full fill", "partial fill"), tuple(decision.reason for decision in first))
 
+    def test_full_fill_engine_accepts_exact_liquidity_and_rejects_one_less(self):
+        engine = FullFillEngineV1()
+        exact = engine.decide(ExecutionRequest("order-1", "AUR", 4, 2_500, 4))
+        short = engine.decide(ExecutionRequest("order-2", "AUR", 4, 2_500, 3))
+        self.assertEqual((4, "full fill"), (exact.filled_quantity, exact.reason))
+        self.assertEqual((0, "insufficient liquidity for full fill"), (short.filled_quantity, short.reason))
+
     def test_engine_comparison_rejects_empty_or_duplicate_engine_sets(self):
         request = ExecutionRequest("order-1", "AUR", 10, 2_500, 4)
         with self.assertRaises(ValueError):
