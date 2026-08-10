@@ -364,6 +364,8 @@ class AccountTests(unittest.TestCase):
             ExecutionRequest("order-1", "AUR", True, 2_500, 1)
         with self.assertRaises(ValueError):
             ExecutionRequest("order-1", "AUR", 1, 2_500, False)
+        with self.assertRaises(ValueError):
+            ExecutionRequest(1, "AUR", 1, 2_500, 1)
 
     def test_liquidity_capped_engine_handles_zero_and_full_liquidity(self):
         engine = LiquidityCappedEngineV2()

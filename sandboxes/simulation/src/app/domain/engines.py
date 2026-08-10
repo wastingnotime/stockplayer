@@ -13,7 +13,7 @@ class ExecutionRequest:
     available_liquidity: int
 
     def __post_init__(self) -> None:
-        if not self.order_id or not self.symbol:
+        if not isinstance(self.order_id, str) or not isinstance(self.symbol, str) or not self.order_id or not self.symbol:
             raise ValueError("order and symbol are required")
         if (
             isinstance(self.quantity, bool) or not isinstance(self.quantity, int) or self.quantity <= 0
@@ -32,12 +32,12 @@ class ExecutionDecision:
     reason: str
 
     def __post_init__(self) -> None:
-        if not self.engine_version or not self.order_id:
+        if not isinstance(self.engine_version, str) or not isinstance(self.order_id, str) or not self.engine_version or not self.order_id:
             raise ValueError("engine version and order are required")
         if (
             isinstance(self.filled_quantity, bool) or not isinstance(self.filled_quantity, int) or self.filled_quantity < 0
             or isinstance(self.price_minor, bool) or not isinstance(self.price_minor, int) or self.price_minor <= 0
-            or not self.reason
+            or not isinstance(self.reason, str) or not self.reason
         ):
             raise ValueError("decision values must be valid")
 
