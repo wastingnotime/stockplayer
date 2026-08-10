@@ -82,6 +82,14 @@ class LiquidityCappedEngineV2:
         return ExecutionDecision(self.version, request.order_id, filled, request.price_minor, reason)
 
 
+def _validate_decisions(request: ExecutionRequest, decisions: tuple[ExecutionDecision, ...]) -> None:
+    for decision in decisions:
+        if decision.order_id != request.order_id or decision.price_minor != request.price_minor:
+            raise ValueError("engine decision must preserve request identity and price")
+        if decision.filled_quantity > request.quantity:
+            raise ValueError("engine decision cannot overfill request quantity")
+
+
 def compare_engines(request: ExecutionRequest, engines: tuple[ExecutionEngine, ...]) -> tuple[ExecutionDecision, ...]:
     if not engines:
         raise ValueError("at least one execution engine is required")
@@ -91,11 +99,7 @@ def compare_engines(request: ExecutionRequest, engines: tuple[ExecutionEngine, .
     if len(set(versions)) != len(versions):
         raise ValueError("execution engine versions must be unique")
     decisions = tuple(engine.decide(request) for engine in engines)
-    for decision in decisions:
-        if decision.order_id != request.order_id or decision.price_minor != request.price_minor:
-            raise ValueError("engine decision must preserve request identity and price")
-        if decision.filled_quantity > request.quantity:
-            raise ValueError("engine decision cannot overfill request quantity")
+    _validate_decisions(request, decisions)
     return decisions
 
 
@@ -103,11 +107,7 @@ def comparison_payload(request: ExecutionRequest, decisions: tuple[ExecutionDeci
     """Serialize validated comparison facts for runtime observations."""
     if not decisions:
         raise ValueError("comparison payload requires decisions")
-    for decision in decisions:
-        if decision.order_id != request.order_id or decision.price_minor != request.price_minor:
-            raise ValueError("comparison payload decision does not match request")
-        if decision.filled_quantity > request.quantity:
-            raise ValueError("comparison payload decision cannot overfill request")
+    _validate_decisions(request, decisions)
     return {
         "request_quantity": request.quantity,
         "price_minor": request.price_minor,
