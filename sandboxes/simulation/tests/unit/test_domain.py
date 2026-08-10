@@ -11,7 +11,7 @@ from app.infrastructure.memory import AccountProjections, OrderView, ProjectionF
 from app.simulation.invariants import cash_non_negative, ledger_explains_total_cash, positions_non_negative, reservations_non_negative
 from app.simulation.catalog import SCENARIOS, get_scenario, implemented_scenarios
 from app.domain.market import DeterministicPriceGenerator, MarketSession, PriceHistory, PriceTick, SessionState
-from app.domain.engines import ExecutionDecision, ExecutionRequest, FullFillEngineV1, LiquidityCappedEngineV2, compare_engines
+from app.domain.engines import ExecutionDecision, ExecutionRequest, FullFillEngineV1, LiquidityCappedEngineV2, compare_engines, comparison_payload
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -352,6 +352,13 @@ class AccountTests(unittest.TestCase):
             compare_engines(request, ())
         with self.assertRaises(ValueError):
             compare_engines(request, (FullFillEngineV1(), FullFillEngineV1()))
+
+    def test_comparison_payload_preserves_engine_order_and_delta(self):
+        request = ExecutionRequest("order-1", "AUR", 10, 2_500, 4)
+        decisions = compare_engines(request, (FullFillEngineV1(), LiquidityCappedEngineV2()))
+        payload = comparison_payload(request, decisions)
+        self.assertEqual(["v1-full-fill", "v2-liquidity-capped"], payload["engine_versions"])
+        self.assertEqual(4, payload["fill_delta"])
 
     def test_execution_decision_rejects_invalid_values(self):
         with self.assertRaises(ValueError):

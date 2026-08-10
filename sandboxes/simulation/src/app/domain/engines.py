@@ -79,3 +79,25 @@ def compare_engines(request: ExecutionRequest, engines: tuple[ExecutionEngine, .
         if decision.filled_quantity > request.quantity:
             raise ValueError("engine decision cannot overfill request quantity")
     return decisions
+
+
+def comparison_payload(request: ExecutionRequest, decisions: tuple[ExecutionDecision, ...]) -> dict[str, object]:
+    """Serialize validated comparison facts for runtime observations."""
+    if not decisions:
+        raise ValueError("comparison payload requires decisions")
+    return {
+        "request_quantity": request.quantity,
+        "price_minor": request.price_minor,
+        "liquidity": request.available_liquidity,
+        "engine_versions": [decision.engine_version for decision in decisions],
+        "decisions": [
+            {
+                "engine_version": decision.engine_version,
+                "filled_quantity": decision.filled_quantity,
+                "price_minor": decision.price_minor,
+                "reason": decision.reason,
+            }
+            for decision in decisions
+        ],
+        "fill_delta": decisions[-1].filled_quantity - decisions[0].filled_quantity,
+    }
