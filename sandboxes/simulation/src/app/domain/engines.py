@@ -34,7 +34,11 @@ class ExecutionDecision:
     def __post_init__(self) -> None:
         if not self.engine_version or not self.order_id:
             raise ValueError("engine version and order are required")
-        if self.filled_quantity < 0 or self.price_minor <= 0 or not self.reason:
+        if (
+            isinstance(self.filled_quantity, bool) or not isinstance(self.filled_quantity, int) or self.filled_quantity < 0
+            or isinstance(self.price_minor, bool) or not isinstance(self.price_minor, int) or self.price_minor <= 0
+            or not self.reason
+        ):
             raise ValueError("decision values must be valid")
 
 

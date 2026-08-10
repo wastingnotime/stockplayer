@@ -356,6 +356,8 @@ class AccountTests(unittest.TestCase):
     def test_execution_decision_rejects_invalid_values(self):
         with self.assertRaises(ValueError):
             ExecutionDecision("v1", "order-1", -1, 2_500, "invalid")
+        with self.assertRaises(ValueError):
+            ExecutionDecision("v1", "order-1", True, 2_500, "invalid")
 
     def test_execution_request_rejects_boolean_numeric_values(self):
         with self.assertRaises(ValueError):
