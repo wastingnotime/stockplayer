@@ -33,7 +33,8 @@ event, and replaying an event stream reconstructs the same account state.
 Execution-engine comparison is observational: each candidate receives the same
 order identity, price, quantity, and liquidity. A valid decision preserves the
 order identity and price and cannot fill more than requested; comparison does
-not write account events or choose a production engine.
+not write account events or choose a production engine. A decision also cannot
+fill more than the liquidity supplied to the comparison.
 
 ## Candidate slice map
 
