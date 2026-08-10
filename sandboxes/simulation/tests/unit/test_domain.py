@@ -359,6 +359,8 @@ class AccountTests(unittest.TestCase):
         payload = comparison_payload(request, decisions)
         self.assertEqual(["v1-full-fill", "v2-liquidity-capped"], payload["engine_versions"])
         self.assertEqual(4, payload["fill_delta"])
+        with self.assertRaises(ValueError):
+            comparison_payload(request, ())
 
     def test_environment_comparison_does_not_mutate_account_state(self):
         environment = StockplayerEnvironment({"AUR": 2_500})

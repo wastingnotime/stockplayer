@@ -85,6 +85,11 @@ def comparison_payload(request: ExecutionRequest, decisions: tuple[ExecutionDeci
     """Serialize validated comparison facts for runtime observations."""
     if not decisions:
         raise ValueError("comparison payload requires decisions")
+    for decision in decisions:
+        if decision.order_id != request.order_id or decision.price_minor != request.price_minor:
+            raise ValueError("comparison payload decision does not match request")
+        if decision.filled_quantity > request.quantity:
+            raise ValueError("comparison payload decision cannot overfill request")
     return {
         "request_quantity": request.quantity,
         "price_minor": request.price_minor,
