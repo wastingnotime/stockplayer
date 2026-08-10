@@ -12,6 +12,21 @@ from mrl_simulation_runtime.runner import SimulationRunner
 
 
 class SimplePurchaseScenarioTests(unittest.TestCase):
+    def test_observatory_graph_covers_built_simulation_boundaries(self):
+        scenario = create_simulation()
+        node_ids = {node.id for node in scenario.observatory_nodes}
+        self.assertEqual(
+            {
+                "actor", "use-case", "account", "projections", "market", "session",
+                "price-history", "orders", "reservations", "recovery", "engines", "invariants",
+            },
+            node_ids,
+        )
+        edges = {(edge.from_node, edge.to_node, edge.label) for edge in scenario.observatory_edges}
+        self.assertIn(("recovery", "projections", "rebuilds from events"), edges)
+        self.assertIn(("use-case", "engines", "compares candidates"), edges)
+        self.assertIn(("projections", "invariants", "checked by"), edges)
+
     def test_run_is_deterministic_and_invariants_pass(self):
         first = SimulationRunner().run(create_simulation()).observations.to_jsonl()
         second = SimulationRunner().run(create_simulation()).observations.to_jsonl()
