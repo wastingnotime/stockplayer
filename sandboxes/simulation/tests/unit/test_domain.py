@@ -370,6 +370,9 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(4, payload["fill_delta"])
         with self.assertRaises(ValueError):
             comparison_payload(request, ())
+        duplicate = (decisions[0], ExecutionDecision("v1-full-fill", "order-1", 1, 2_500, "duplicate"))
+        with self.assertRaises(ValueError):
+            comparison_payload(request, duplicate)
 
     def test_environment_comparison_does_not_mutate_account_state(self):
         environment = StockplayerEnvironment({"AUR": 2_500})

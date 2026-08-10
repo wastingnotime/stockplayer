@@ -108,11 +108,14 @@ def comparison_payload(request: ExecutionRequest, decisions: tuple[ExecutionDeci
     if not decisions:
         raise ValueError("comparison payload requires decisions")
     _validate_decisions(request, decisions)
+    versions = [decision.engine_version for decision in decisions]
+    if len(set(versions)) != len(versions):
+        raise ValueError("comparison payload engine versions must be unique")
     return {
         "request_quantity": request.quantity,
         "price_minor": request.price_minor,
         "liquidity": request.available_liquidity,
-        "engine_versions": [decision.engine_version for decision in decisions],
+        "engine_versions": versions,
         "decisions": [
             {
                 "engine_version": decision.engine_version,
