@@ -1,4 +1,5 @@
 import pathlib
+import json
 import sys
 import unittest
 
@@ -30,6 +31,10 @@ class SimplePurchaseScenarioTests(unittest.TestCase):
         self.assertIn('"engine_versions": ["v1-full-fill", "v2-liquidity-capped"]', first)
         self.assertIn('"price_minor": 2594', first)
         self.assertNotIn('"passed": false', first)
+
+        comparison = next(json.loads(line) for line in first.splitlines() if json.loads(line)["name"] == "execution_engines_compared")
+        self.assertEqual(4, comparison["payload"]["fill_delta"])
+        self.assertEqual([0, 4], [decision["filled_quantity"] for decision in comparison["payload"]["decisions"]])
 
 
 if __name__ == "__main__":
