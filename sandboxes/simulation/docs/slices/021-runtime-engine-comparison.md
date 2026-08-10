@@ -22,6 +22,8 @@ then closes the market.
 - Runtime evidence includes the request price and a signed `fill_delta`
   between the last and first listed engine, making the difference
   machine-checkable without reconstructing decisions from prose.
+- The payload shape is stable: `request_quantity`, `price_minor`, `liquidity`,
+  ordered `engine_versions`, per-engine `decisions`, and `fill_delta`.
 - Candidate comparison runs after recovery and before session close.
 - Account state remains authoritative and unchanged by comparison.
 - The shared simulation environment owns comparison orchestration; the runtime
