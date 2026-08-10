@@ -362,6 +362,17 @@ class AccountTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compare_engines(request, (UnnamedEngine(),))
 
+        low_liquidity = ExecutionRequest("order-2", "AUR", 10, 2_500, 1)
+
+        class LiquidityIgnoringEngine:
+            version = "ignores-liquidity"
+
+            def decide(self, request):
+                return ExecutionDecision(self.version, request.order_id, 2, request.price_minor, "over liquidity")
+
+        with self.assertRaises(ValueError):
+            compare_engines(low_liquidity, (LiquidityIgnoringEngine(),))
+
     def test_comparison_payload_preserves_engine_order_and_delta(self):
         request = ExecutionRequest("order-1", "AUR", 10, 2_500, 4)
         decisions = compare_engines(request, (FullFillEngineV1(), LiquidityCappedEngineV2()))

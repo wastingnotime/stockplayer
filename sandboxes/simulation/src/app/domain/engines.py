@@ -88,6 +88,8 @@ def _validate_decisions(request: ExecutionRequest, decisions: tuple[ExecutionDec
             raise ValueError("engine decision must preserve request identity and price")
         if decision.filled_quantity > request.quantity:
             raise ValueError("engine decision cannot overfill request quantity")
+        if decision.filled_quantity > request.available_liquidity:
+            raise ValueError("engine decision cannot exceed available liquidity")
 
 
 def compare_engines(request: ExecutionRequest, engines: tuple[ExecutionEngine, ...]) -> tuple[ExecutionDecision, ...]:
