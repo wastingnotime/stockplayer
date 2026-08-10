@@ -19,8 +19,12 @@ then closes the market.
 ## Done criteria
 
 - Runtime evidence includes both engine versions and reasons.
+- Runtime evidence includes the request price and a signed `fill_delta`
+  between the last and first listed engine, making the difference
+  machine-checkable without reconstructing decisions from prose.
 - Candidate comparison runs after recovery and before session close.
 - Account state remains authoritative and unchanged by comparison.
 
 Out of scope: promotion, engine selection, production benchmarking, and order
-book implementation.
+book implementation. The comparison remains observational and does not settle
+an order.
