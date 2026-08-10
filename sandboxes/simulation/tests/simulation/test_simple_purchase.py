@@ -35,6 +35,10 @@ class SimplePurchaseScenarioTests(unittest.TestCase):
         comparison = next(json.loads(line) for line in first.splitlines() if json.loads(line)["name"] == "execution_engines_compared")
         self.assertEqual("engine-001", comparison["correlation_id"])
         self.assertEqual("2026-01-05T13:00:02.750000+00:00", comparison["sim_time"])
+        self.assertEqual(
+            {"request_quantity", "price_minor", "liquidity", "engine_versions", "decisions", "fill_delta"},
+            set(comparison["payload"]),
+        )
         self.assertEqual(4, comparison["payload"]["fill_delta"])
         self.assertEqual([0, 4], [decision["filled_quantity"] for decision in comparison["payload"]["decisions"]])
 
