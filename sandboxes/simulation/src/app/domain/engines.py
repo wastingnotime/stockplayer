@@ -70,6 +70,8 @@ def compare_engines(request: ExecutionRequest, engines: tuple[ExecutionEngine, .
     if not engines:
         raise ValueError("at least one execution engine is required")
     versions = [engine.version for engine in engines]
+    if any(not isinstance(version, str) or not version for version in versions):
+        raise ValueError("execution engine versions are required")
     if len(set(versions)) != len(versions):
         raise ValueError("execution engine versions must be unique")
     decisions = tuple(engine.decide(request) for engine in engines)

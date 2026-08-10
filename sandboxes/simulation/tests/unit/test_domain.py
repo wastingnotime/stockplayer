@@ -353,6 +353,15 @@ class AccountTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compare_engines(request, (FullFillEngineV1(), FullFillEngineV1()))
 
+        class UnnamedEngine:
+            version = ""
+
+            def decide(self, request):
+                return ExecutionDecision("unnamed", request.order_id, 0, request.price_minor, "none")
+
+        with self.assertRaises(ValueError):
+            compare_engines(request, (UnnamedEngine(),))
+
     def test_comparison_payload_preserves_engine_order_and_delta(self):
         request = ExecutionRequest("order-1", "AUR", 10, 2_500, 4)
         decisions = compare_engines(request, (FullFillEngineV1(), LiquidityCappedEngineV2()))
