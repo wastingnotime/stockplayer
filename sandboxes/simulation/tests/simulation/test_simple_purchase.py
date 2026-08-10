@@ -26,6 +26,8 @@ class SimplePurchaseScenarioTests(unittest.TestCase):
         self.assertIn('"name": "order_status_updated"', first)
         self.assertIn('"name": "order_status_recovered"', first)
         self.assertIn('"name": "execution_engines_compared"', first)
+        self.assertIn('"fill_delta": 4', first)
+        self.assertIn('"price_minor": 2594', first)
         self.assertNotIn('"passed": false', first)
 
 
