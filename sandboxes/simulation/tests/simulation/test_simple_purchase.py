@@ -22,6 +22,7 @@ class SimplePurchaseScenarioTests(unittest.TestCase):
             },
             node_ids,
         )
+        self.assertTrue(all(node.kind in {"actor", "use_case", "aggregate", "projection", "provider", "event_store", "repository", "event"} for node in scenario.observatory_nodes))
         edges = {(edge.from_node, edge.to_node, edge.label) for edge in scenario.observatory_edges}
         self.assertIn(("recovery", "projections", "rebuilds from events"), edges)
         self.assertIn(("use-case", "engines", "compares candidates"), edges)
