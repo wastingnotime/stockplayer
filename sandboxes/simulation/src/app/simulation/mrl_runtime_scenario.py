@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from app.application.purchase import SubmitMarketBuy
-from app.domain.engines import FullFillEngineV1, LiquidityCappedEngineV2, ExecutionRequest, compare_engines, comparison_payload
+from app.domain.engines import FullFillEngineV1, LiquidityCappedEngineV2, ExecutionRequest, comparison_payload
 from app.domain.market import DeterministicPriceGenerator, PriceHistory
 from app.infrastructure.memory import ProjectionFailure
 from app.simulation.invariants import cash_non_negative, ledger_explains_total_cash, positions_non_negative, reservations_non_negative
@@ -55,7 +55,7 @@ def create_simulation() -> Scenario:
 
     def compare_execution_engines(context) -> None:
         request = ExecutionRequest("candidate-order", "AUR", 10, environment.market.price_minor("AUR"), 4)
-        decisions = compare_engines(request, (FullFillEngineV1(), LiquidityCappedEngineV2()))
+        decisions = environment.compare_execution(request, (FullFillEngineV1(), LiquidityCappedEngineV2()))
         context.emit("engine_comparison", "execution_engines_compared", source="Stockplayer", actor="engine-lab", correlation_id="engine-001", payload=comparison_payload(request, decisions))
 
     def close_market(context) -> None:

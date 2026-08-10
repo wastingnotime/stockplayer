@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from app.domain.market import MarketSession
+from app.domain.engines import ExecutionDecision, ExecutionEngine, ExecutionRequest, compare_engines
 from app.application.purchase import CancelLimitBuy, CancelLimitBuyHandler, CancelMarketSellReservation, CancelMarketSellReservationHandler, ExecuteLimitBuy, ExecuteLimitBuyHandler, ExecuteMarketSellReservation, ExecuteMarketSellReservationHandler, ExecutePartialLimitBuy, ExecutePartialLimitBuyHandler, ExecutePartialMarketSellReservation, ExecutePartialMarketSellReservationHandler, SubmitLimitBuy, SubmitLimitBuyHandler, SubmitMarketBuy, SubmitMarketBuyHandler, SubmitMarketSell, SubmitMarketSellHandler, SubmitMarketSellReservation, SubmitMarketSellReservationHandler
 from app.domain.model import Account
 from app.infrastructure.memory import AccountProjections, FixedMarketData, InMemoryEventStore
@@ -27,6 +28,9 @@ class StockplayerEnvironment:
 
     def fail_next_projection(self) -> None:
         self.projections.inject_failure()
+
+    def compare_execution(self, request: ExecutionRequest, engines: tuple[ExecutionEngine, ...]) -> tuple[ExecutionDecision, ...]:
+        return compare_engines(request, engines)
 
     def buy(self, command: SubmitMarketBuy):
         return SubmitMarketBuyHandler(self.store, self.market, self.projections, self.session).handle(command)
