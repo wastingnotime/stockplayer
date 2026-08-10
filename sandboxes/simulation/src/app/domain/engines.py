@@ -1,7 +1,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, TypedDict
+
+
+class ExecutionDecisionPayload(TypedDict):
+    engine_version: str
+    filled_quantity: int
+    price_minor: int
+    reason: str
+
+
+class ComparisonPayload(TypedDict):
+    request_quantity: int
+    price_minor: int
+    liquidity: int
+    engine_versions: list[str]
+    decisions: list[ExecutionDecisionPayload]
+    fill_delta: int
 
 
 @dataclass(frozen=True)
@@ -83,7 +99,7 @@ def compare_engines(request: ExecutionRequest, engines: tuple[ExecutionEngine, .
     return decisions
 
 
-def comparison_payload(request: ExecutionRequest, decisions: tuple[ExecutionDecision, ...]) -> dict[str, object]:
+def comparison_payload(request: ExecutionRequest, decisions: tuple[ExecutionDecision, ...]) -> ComparisonPayload:
     """Serialize validated comparison facts for runtime observations."""
     if not decisions:
         raise ValueError("comparison payload requires decisions")
