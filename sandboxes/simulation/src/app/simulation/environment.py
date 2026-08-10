@@ -30,6 +30,7 @@ class StockplayerEnvironment:
         self.projections.inject_failure()
 
     def compare_execution(self, request: ExecutionRequest, engines: tuple[ExecutionEngine, ...]) -> tuple[ExecutionDecision, ...]:
+        """Compare candidates without appending events or changing projections."""
         return compare_engines(request, engines)
 
     def buy(self, command: SubmitMarketBuy):
