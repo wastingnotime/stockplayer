@@ -68,4 +68,10 @@ def compare_engines(request: ExecutionRequest, engines: tuple[ExecutionEngine, .
     versions = [engine.version for engine in engines]
     if len(set(versions)) != len(versions):
         raise ValueError("execution engine versions must be unique")
-    return tuple(engine.decide(request) for engine in engines)
+    decisions = tuple(engine.decide(request) for engine in engines)
+    for decision in decisions:
+        if decision.order_id != request.order_id or decision.price_minor != request.price_minor:
+            raise ValueError("engine decision must preserve request identity and price")
+        if decision.filled_quantity > request.quantity:
+            raise ValueError("engine decision cannot overfill request quantity")
+    return decisions

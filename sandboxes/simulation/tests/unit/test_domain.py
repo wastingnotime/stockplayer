@@ -370,6 +370,18 @@ class AccountTests(unittest.TestCase):
         self.assertEqual((0, "no liquidity"), (no_liquidity.filled_quantity, no_liquidity.reason))
         self.assertEqual((2, "full fill"), (full_liquidity.filled_quantity, full_liquidity.reason))
 
+    def test_engine_comparison_rejects_decisions_that_change_request_or_overfill(self):
+        request = ExecutionRequest("order-1", "AUR", 2, 2_500, 2)
+
+        class InvalidEngine:
+            version = "invalid"
+
+            def decide(self, request):
+                return ExecutionDecision(self.version, "other-order", 3, request.price_minor + 1, "invalid")
+
+        with self.assertRaises(ValueError):
+            compare_engines(request, (InvalidEngine(),))
+
     def test_closed_session_rejects_new_buy_without_economic_effect(self):
         environment = StockplayerEnvironment({"AUR": 2_500})
         environment.open_funded_account("account-1", "Ada", 100_000, NOW)
