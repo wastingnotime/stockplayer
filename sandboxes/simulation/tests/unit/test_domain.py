@@ -11,7 +11,7 @@ from app.infrastructure.memory import AccountProjections, OrderView, ProjectionF
 from app.simulation.invariants import cash_non_negative, ledger_explains_total_cash, positions_non_negative, reservations_non_negative
 from app.simulation.catalog import SCENARIOS, get_scenario, implemented_scenarios
 from app.domain.market import DeterministicPriceGenerator, MarketSession, PriceHistory, PriceTick, SessionState
-from app.domain.engines import ExecutionRequest, FullFillEngineV1, LiquidityCappedEngineV2, compare_engines
+from app.domain.engines import ExecutionDecision, ExecutionRequest, FullFillEngineV1, LiquidityCappedEngineV2, compare_engines
 from app.simulation.environment import StockplayerEnvironment
 
 
@@ -345,6 +345,17 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual((0, 4), tuple(decision.filled_quantity for decision in first))
         self.assertEqual(("insufficient liquidity for full fill", "partial fill"), tuple(decision.reason for decision in first))
+
+    def test_engine_comparison_rejects_empty_or_duplicate_engine_sets(self):
+        request = ExecutionRequest("order-1", "AUR", 10, 2_500, 4)
+        with self.assertRaises(ValueError):
+            compare_engines(request, ())
+        with self.assertRaises(ValueError):
+            compare_engines(request, (FullFillEngineV1(), FullFillEngineV1()))
+
+    def test_execution_decision_rejects_invalid_values(self):
+        with self.assertRaises(ValueError):
+            ExecutionDecision("v1", "order-1", -1, 2_500, "invalid")
 
     def test_closed_session_rejects_new_buy_without_economic_effect(self):
         environment = StockplayerEnvironment({"AUR": 2_500})

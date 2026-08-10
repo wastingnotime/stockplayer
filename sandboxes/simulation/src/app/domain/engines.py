@@ -27,6 +27,12 @@ class ExecutionDecision:
     price_minor: int
     reason: str
 
+    def __post_init__(self) -> None:
+        if not self.engine_version or not self.order_id:
+            raise ValueError("engine version and order are required")
+        if self.filled_quantity < 0 or self.price_minor <= 0 or not self.reason:
+            raise ValueError("decision values must be valid")
+
 
 class ExecutionEngine(Protocol):
     version: str
@@ -53,4 +59,9 @@ class LiquidityCappedEngineV2:
 
 
 def compare_engines(request: ExecutionRequest, engines: tuple[ExecutionEngine, ...]) -> tuple[ExecutionDecision, ...]:
+    if not engines:
+        raise ValueError("at least one execution engine is required")
+    versions = [engine.version for engine in engines]
+    if len(set(versions)) != len(versions):
+        raise ValueError("execution engine versions must be unique")
     return tuple(engine.decide(request) for engine in engines)
