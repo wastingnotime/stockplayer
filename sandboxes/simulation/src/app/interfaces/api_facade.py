@@ -158,5 +158,14 @@ class SimulationApiFacade:
     def ledger(self, account_id: str) -> list[dict[str, object]]:
         return [asdict(entry) for entry in self.environment.projections.ledger.get(account_id, [])]
 
+    def orders(self, account_id: str) -> list[dict[str, object]]:
+        return [
+            {"account_id": account_id, "order_id": order_id, **asdict(view)}
+            for order_id, view in sorted(
+                ((order_id, view) for (owner, order_id), view in self.environment.projections.orders.items() if owner == account_id),
+                key=lambda item: item[0],
+            )
+        ]
+
     def accounts(self) -> list[str]:
         return sorted(self.environment.projections.cash_minor)

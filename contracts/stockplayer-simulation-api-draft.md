@@ -45,6 +45,7 @@ idempotency by returning no new event types and leaving the account unchanged.
 - `ledger`: returns projected ledger entries for one account in event order.
 - `accounts`: returns projected account identifiers in deterministic lexical
   order.
+- `orders`: returns an account's projected order views in deterministic order.
 
 Money and prices are integer minor units. Timestamps are ISO-8601 with an
 explicit offset; the draft adapter rejects naive timestamps at its boundary.

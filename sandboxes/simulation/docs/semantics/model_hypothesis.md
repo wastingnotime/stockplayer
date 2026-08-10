@@ -85,7 +85,8 @@ event, and replaying an event stream reconstructs the same account state.
 49. Draft API command idempotency boundary (built; unreleased).
 50. Draft API command acceptance response (built; unreleased).
 51. Draft API malformed timestamp handling (built; unreleased).
-52. Released API and browser adapter contracts.
+52. Draft API focused order listing (built; unreleased).
+53. Released API and browser adapter contracts.
 
 The order is a hypothesis and must change when refinement evidence reveals a
 better boundary.

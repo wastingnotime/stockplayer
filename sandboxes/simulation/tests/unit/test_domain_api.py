@@ -60,6 +60,8 @@ class SimulationApiFacadeTests(unittest.TestCase):
         self.assertIsNone(facade.order("acct-api", "missing"))
         self.assertEqual(result["account"]["ledger"], facade.ledger("acct-api"))
         self.assertEqual([], facade.ledger("missing-account"))
+        self.assertEqual([facade.order("acct-api", "order-api")], facade.orders("acct-api"))
+        self.assertEqual([], facade.orders("missing-account"))
 
     def test_draft_adapter_preserves_duplicate_market_buy_idempotency(self):
         facade = SimulationApiFacade(StockplayerEnvironment({"AUR": 2_500}))
