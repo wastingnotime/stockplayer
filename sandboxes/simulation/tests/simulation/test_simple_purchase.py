@@ -17,12 +17,13 @@ class SimplePurchaseScenarioTests(unittest.TestCase):
         node_ids = {node.id for node in scenario.observatory_nodes}
         self.assertEqual(
             {
-                "actor", "use-case", "account", "projections", "market", "session",
-                "price-history", "orders", "reservations", "recovery", "engines", "invariants",
+                "actor", "market-simulator", "projection-worker", "engine-lab", "use-case", "account",
+                "projections", "market", "session", "price-history", "orders", "reservations", "recovery",
+                "engines", "invariants",
             },
             node_ids,
         )
-        self.assertTrue(all(node.kind in {"actor", "use_case", "aggregate", "projection", "provider", "event_store", "repository", "event"} for node in scenario.observatory_nodes))
+        self.assertTrue(all(node.kind in {"actor", "use_case", "aggregate", "projection", "fake_provider", "event_store", "repository", "event"} for node in scenario.observatory_nodes))
         edges = {(edge.from_node, edge.to_node, edge.label) for edge in scenario.observatory_edges}
         self.assertIn(("recovery", "projections", "rebuilds from events"), edges)
         self.assertIn(("use-case", "engines", "compares candidates"), edges)
@@ -52,7 +53,7 @@ class SimplePurchaseScenarioTests(unittest.TestCase):
         self.assertEqual("engine-001", comparison["correlation_id"])
         self.assertEqual("2026-01-05T13:00:02.750000+00:00", comparison["sim_time"])
         self.assertEqual(
-            {"request_quantity", "price_minor", "liquidity", "engine_versions", "decisions", "fill_delta"},
+            {"request_quantity", "price_minor", "liquidity", "engine_versions", "decisions", "fill_delta", "use_case_id"},
             set(comparison["payload"]),
         )
         self.assertEqual(4, comparison["payload"]["fill_delta"])
